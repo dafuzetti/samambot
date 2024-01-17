@@ -22,24 +22,30 @@ def add_players(ctx, same_team, p1: discord.User, p2: discord.User = None,
     data_base.new_player(ctx, list, same_team)
 
 
-async def channelname(ctx, status, event_id = None):
-    name = ctx.channel.name
+async def channelnameopen(channel, event_id = None):
+    name = channel.name
     newname = name
-    if status == 'new':
-        if newname.endswith('__'):
-            parts = newname.rsplit("__", 1)
-            newname = ('_event-' + str(event_id) + '_').join(parts)
-    elif status == 'close':
-        pattern = re.compile(r'_event-(\d+)_')
-        if bool(pattern.search(newname)):
-            print('entrou/s')
-            newname = newname.rsplit("_", 2)[0] + '__'
+    if newname.endswith('__'):
+        parts = newname.rsplit("__", 1)
+        newname = ('_event-' + str(event_id) + '_').join(parts)
     if newname != name:
         try:
-            await ctx.channel.edit(name=newname)
+            await channel.edit(name=newname)
         except discord:
             return
 
+
+async def channelnameclose(channel, event_id = None):
+    name = channel.name
+    newname = name
+    pattern = re.compile(r'_event-(\d+)_')
+    if bool(pattern.search(newname)):
+        newname = newname.rsplit("_", 2)[0] + '__'
+    if newname != name:
+        try:
+            await channel.edit(name=newname)
+        except discord:
+            return
 
 def resultado(ctx, player_w, player_l, losses):
     data_base.update_matches(ctx, player_w, player_l, losses)
@@ -76,15 +82,13 @@ def print_history(ctx, channel: bool = False):
     for draft in hist:
         count = count + 1
         if draft[5] is not None:
-            dates = dates + str(count) + ' - ' + str(
+            dates = dates + ' ID: ' + str(draft[0]) + ' - ' + str(
                 draft[2])[6:] + '/' + str(draft[2])[4:~1] + '/' + str(
-                draft[2])[0:~3] + ' (' + str(draft[7]) + ') ' + draft[6] + ' ID: ' + str(
-                draft[0]) + '\n'
+                draft[2])[0:~3] + ' (' + str(draft[7]) + ') ' + '\n'
         else:
-            active = active + str(count) + ' - ' + str(
+            active = active + ' ID: ' + str(draft[0]) + ' - ' + str(
                 draft[2])[6:] + '/' + str(draft[2])[4:~1] + '/' + str(
-                draft[2])[0:~3] + ' (' + str(draft[7]) + ') ' + draft[6] + ' ID: ' + str(
-                draft[0]) + '\n'
+                draft[2])[0:~3] + ' (' + str(draft[7]) + ') ' + draft[6] + '\n'
     embed.add_field(name='History', value=dates, inline=False)
     embed.add_field(name='Active', value=active, inline=False)
     return embed

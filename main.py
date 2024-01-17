@@ -17,7 +17,7 @@ async def newevent(ctx):
     type: int = 0
     await ctx.response.defer()
     event_id = data_base.new_event(ctx, teams, type)
-    await functions.channelname(ctx, 'new', event_id)
+    await functions.channelnameopen(ctx.channel, event_id)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
@@ -60,7 +60,7 @@ async def event(ctx, action: str = ''):
         functions.start(ctx)
     elif action.lower() == 'close':
         event_id = data_base.close_event(ctx)
-        await functions.channelname(ctx, 'close')
+        await functions.channelnameclose(ctx.channel, event_id)
     elif action.lower() == 'clear':
         data_base.clear_event(ctx)
     embed = functions.print_event(ctx, event_id)
@@ -70,8 +70,13 @@ async def event(ctx, action: str = ''):
 @ bot.command(name='movehere', description='Report a match that you lose.')
 async def movehere(ctx, event_id: int):
     await ctx.response.defer()
+    name = "_event-" + str(event_id) + "_"
+    for chann in ctx.guild.channels:
+        if chann.name.endswith(name):
+            await functions.channelnameclose(chann, event_id)
     data_base.move_event(ctx, event_id)
     embed = functions.print_event(ctx)
+    await functions.channelnameopen(ctx.channel, event_id)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
