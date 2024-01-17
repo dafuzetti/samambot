@@ -83,13 +83,15 @@ def print_event(ctx, event=None):
         else:
             players = data_base.read_players(ctx, event_id)
             embed = print_players(ctx, players, event_data)
+    else:
+        embed = print_history(ctx)
     return embed
 
 
 def print_players(ctx, players, event_obj):
     dt = players
     embed = discord.Embed(
-        title="__**Event channel:**__ " + event_obj[1] + '\n__**Players:**__', color=0x03f8fc)
+        title="__**Event ID:**__ " + str(event_obj[0])  + "\n__**Event channel:**__ " + event_obj[1] + "\n__**Players:**__", color=0x03f8fc)
     list = dt.values.tolist()
     playersA = ''
     playersB = ''
