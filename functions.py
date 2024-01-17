@@ -3,6 +3,7 @@ import itertools
 import numpy
 import math
 import data_base
+import re
 
 
 def add_players(ctx, same_team, p1: discord.User, p2: discord.User = None,
@@ -19,6 +20,25 @@ def add_players(ctx, same_team, p1: discord.User, p2: discord.User = None,
     list.append(p7)
     list.append(p8)
     data_base.new_player(ctx, list, same_team)
+
+
+async def channelname(ctx, status, event_id = None):
+    name = ctx.channel.name
+    newname = name
+    if status == 'new':
+        if newname.endswith('__'):
+            parts = newname.rsplit("__", 1)
+            newname = ('_event-' + str(event_id) + '_').join(parts)
+    elif status == 'close':
+        pattern = re.compile(r'_event-(\d+)_')
+        if bool(pattern.search(newname)):
+            print('entrou/s')
+            newname = newname.rsplit("_", 2)[0] + '__'
+    if newname != name:
+        try:
+            await ctx.channel.edit(name=newname)
+        except discord:
+            return
 
 
 def resultado(ctx, player_w, player_l, losses):

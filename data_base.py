@@ -8,6 +8,7 @@ from decouple import config
 SQL_INSERT_EVENT = """INSERT INTO event(guild, channel, date, teams, type)
             VALUES(%s, %s, %s, %s, %s) RETURNING id;"""
 SQL_UPDATE_EVENT = """UPDATE event SET victory = %s WHERE id = %s;"""
+SQL_UPDATE_MOVEEVENT = """UPDATE event SET channel = %s WHERE id = %s AND guild = '%s';"""
 SQL_INSERT_TEAMS = """INSERT INTO teams(event, player, team)
             VALUES(%s, %s, %s);"""
 SQL_DELETE_TEAMS = """DELETE FROM teams WHERE event = '%s';"""
@@ -132,6 +133,20 @@ def read_events(ctx, channel=False):
             conn.close()
     return rows
 
+def move_event(ctx, event_id):
+    conn = None
+    team = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(SQL_UPDATE_MOVEEVENT, (ctx.channel_id, event_id,ctx.guild_id))
+        conn.commit()
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
 
 def read_event(ctx, event_id):
     conn = None
