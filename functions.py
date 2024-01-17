@@ -3,6 +3,7 @@ import itertools
 import numpy
 import math
 import data_base
+import re
 
 
 def add_players(ctx, same_team, p1: discord.User, p2: discord.User = None,
@@ -19,6 +20,25 @@ def add_players(ctx, same_team, p1: discord.User, p2: discord.User = None,
     list.append(p7)
     list.append(p8)
     data_base.new_player(ctx, list, same_team)
+
+
+async def channelname(ctx, status, event_id = None):
+    name = ctx.channel.name
+    newname = name
+    if status == 'new':
+        if newname.endswith('__'):
+            parts = newname.rsplit("__", 1)
+            newname = ('_event-' + str(event_id) + '_').join(parts)
+    elif status == 'close':
+        pattern = re.compile(r'_event-(\d+)_')
+        if bool(pattern.search(newname)):
+            print('entrou/s')
+            newname = newname.rsplit("_", 2)[0] + '__'
+    if newname != name:
+        try:
+            await ctx.channel.edit(name=newname)
+        except discord:
+            return
 
 
 def resultado(ctx, player_w, player_l, losses):
@@ -83,13 +103,15 @@ def print_event(ctx, event=None):
         else:
             players = data_base.read_players(ctx, event_id)
             embed = print_players(ctx, players, event_data)
+    else:
+        embed = print_history(ctx)
     return embed
 
 
 def print_players(ctx, players, event_obj):
     dt = players
     embed = discord.Embed(
-        title="__**Event channel:**__ " + event_obj[1] + '\n__**Players:**__', color=0x03f8fc)
+        title="__**Event ID:**__ " + str(event_obj[0])  + "\n__**Event channel:**__ " + event_obj[1] + "\n__**Players:**__", color=0x03f8fc)
     list = dt.values.tolist()
     playersA = ''
     playersB = ''

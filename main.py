@@ -2,6 +2,7 @@ from discord import app_commands
 import discord
 import data_base
 import functions
+import re
 from decouple import config
 
 my_secret = config("TOKEN")
@@ -15,7 +16,8 @@ async def newevent(ctx):
     teams: int = 2
     type: int = 0
     await ctx.response.defer()
-    data_base.new_event(ctx, teams, type)
+    event_id = data_base.new_event(ctx, teams, type)
+    await functions.channelname(ctx, 'new', event_id)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
@@ -51,16 +53,25 @@ async def players(ctx, p1: discord.User, p2: discord.User = None,
 
 
 @ bot.command(name='event', description='Manage current event.')
-async def event(ctx, action: str = '', draftdate: str = None):
+async def event(ctx, action: str = ''):
     await ctx.response.defer()
     event_id = None
     if action.lower() == 'start':
         functions.start(ctx)
     elif action.lower() == 'close':
         event_id = data_base.close_event(ctx)
+        await functions.channelname(ctx, 'close')
     elif action.lower() == 'clear':
         data_base.clear_event(ctx)
     embed = functions.print_event(ctx, event_id)
+    await ctx.followup.send(embed=embed, ephemeral=True)
+
+
+@ bot.command(name='movehere', description='Report a match that you lose.')
+async def movehere(ctx, event_id: int):
+    await ctx.response.defer()
+    data_base.move_event(ctx, event_id)
+    embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
