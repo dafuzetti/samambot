@@ -83,12 +83,13 @@ def read_score(ctx):
                 WHERE
                     ev.id = te.event
                 AND ev.victory IS NOT NULL
+                AND ev.guild = '%s'
                 GROUP BY te.player)
                 WHERE
                 champs >= treshhold
                 ORDER BY event_stat DESC, match_stat DESC, champs DESC, matches DESC, player DESC
                 LIMIT 20
-                """)
+                """, (ctx.guild_id,))
         rows = cur.fetchall()
         conn.commit()
         cur.close()
