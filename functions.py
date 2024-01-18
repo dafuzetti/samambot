@@ -62,15 +62,16 @@ def event_rdm(ctx):
 
 
 def start(ctx):
-    df = data_base.read_players(ctx)
+    event_id = data_base.find_event(ctx)
+    df = data_base.read_players(ctx, event_id)
     counts = df['team'].value_counts()
     if len(df) % 2 == 0 and counts.nunique() == 1 and len(counts) == 2:
         TeamA = df[df['team'] == 1]
         TeamB = df.drop(TeamA.index)
         Mlist = itertools.product(
             TeamA['player'].tolist(), TeamB['player'].tolist())
-        data_base.save_matches(ctx, Mlist)
-    return
+        data_base.save_matches(ctx, Mlist, event_id)
+    return event_id
 
 
 def print_history(ctx, channel: bool = False):
