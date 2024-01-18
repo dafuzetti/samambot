@@ -57,12 +57,14 @@ async def event(ctx, action: str = ''):
     await ctx.response.defer()
     event_id = None
     if action.lower() == 'start':
-        functions.start(ctx)
+        event_id = functions.start(ctx)
     elif action.lower() == 'close':
         event_id = data_base.close_event(ctx)
         await functions.channelnameclose(ctx.channel, event_id)
     elif action.lower() == 'clear':
-        data_base.clear_event(ctx)
+        event_id = data_base.clear_event(ctx)
+    elif action.lower() == 'teams':
+        event_id = data_base.team_formation(ctx)
     embed = functions.print_event(ctx, event_id)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
