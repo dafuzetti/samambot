@@ -18,6 +18,37 @@ SQL_INSERT_MATCH = """INSERT INTO match(event, player, opponent)
             match WHERE event = %s AND player = %s and opponent = %s);"""
 SQL_UPDATE_MATCH = """UPDATE match SET win = %s, lose = %s 
             WHERE event = %s AND player = %s AND opponent = %s;"""
+SQL_TEAM_FORMATION = """UPDATE
+                            TEAMS
+                        SET
+                            TEAM = N_TEAM
+                        FROM
+                        (SELECT
+                            event n_event,
+                            player n_PLAYER,
+                            CASE WHEN MOD(ROW_NUMBER() OVER (ORDER BY points DESC), 2) = 1 THEN 
+                                1 ELSE 
+                                2 END AS N_TEAM
+                        FROM
+                        (SELECT
+                            te.player,
+                            COALESCE((SELECT
+                                            COUNT(1)
+                                        FROM 
+                                            EVENT,
+                                            TEAMS
+                                        WHERE
+                                            EVENT.ID = TEAMS.EVENT
+                                        AND TEAMS.PLAYER = te.PLAYER
+                                        AND EVENT.VICTORY = TEAMS.TEAM) , 0) as points,
+                            event
+                        FROM 
+                            TEAMS te
+                        WHERE
+                            te.EVENT = %s))
+                        WHERE
+                            EVENT = n_event
+                        AND PLAYER = n_PLAYER"""
 env = config("ENV")
 db_key = config("DB_KEY")
 
@@ -133,13 +164,29 @@ def read_events(ctx, channel=False):
             conn.close()
     return rows
 
+def team_formation(ctx):
+    conn = None
+    event_id = find_event(ctx)
+    if event_id is not None:
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(SQL_TEAM_FORMATION, (event_id,))
+            conn.commit()
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+        finally:
+            if conn is not None:
+                conn.close()
+    return event_id
+
 def move_event(ctx, event_id):
     conn = None
-    team = None
     try:
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute(SQL_UPDATE_MOVEEVENT, (ctx.channel_id, event_id,ctx.guild_id))
+        cur.execute(SQL_UPDATE_MOVEEVENT, (ctx.channel_id, event_id, ctx.guild_id))
         conn.commit()
         cur.close()
     except (Exception, psycopg2.DatabaseError) as error:
@@ -235,6 +282,7 @@ def clear_event(ctx):
         finally:
             if conn is not None:
                 conn.close()
+    return event_id
 
 
 def update_matches(ctx, player_w, player_l, lose):
@@ -258,9 +306,11 @@ def update_matches(ctx, player_w, player_l, lose):
                 conn.close()
 
 
-def save_matches(ctx, list):
+def save_matches(ctx, list, event = None):
+    event_id = event
+    if event_id is None:
+        event_id = find_event(ctx)
     conn = None
-    event_id = find_event(ctx)
     if event_id is not None:
         try:
             conn = get_conn()
@@ -275,6 +325,7 @@ def save_matches(ctx, list):
         finally:
             if conn is not None:
                 conn.close()
+    return event_id
 
 
 def new_event(ctx, teams: int = 2, type: int = 0):
