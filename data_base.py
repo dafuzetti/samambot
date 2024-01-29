@@ -158,10 +158,10 @@ def read_score(ctx, player = None):
                 AND (%s OR te.player = %s)
                 GROUP BY te.player)
                 WHERE
-                champs >= treshhold
+                (%s OR champs >= treshhold)
                 ORDER BY event_stat DESC, match_stat DESC, champs DESC, matches DESC, player DESC
                 LIMIT 20
-                """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention),))
+                """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention), (True if player is None else False),))
         rows = cur.fetchall()
         conn.commit()
         cur.close()
