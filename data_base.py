@@ -18,6 +18,26 @@ SQL_INSERT_MATCH = """INSERT INTO match(event, player, opponent)
             match WHERE event = %s AND player = %s and opponent = %s);"""
 SQL_UPDATE_MATCH = """UPDATE match SET win = %s, lose = %s 
             WHERE event = %s AND player = %s AND opponent = %s;"""
+SQL_PLAYER_VS = """SELECT
+                    TE.PLAYER,
+                    SUM(WIN) AS MA_WIN,
+                    (SELECT COUNT(1) FROM EVENT, TEAMS T1 
+                        WHERE 
+                            EVENT.ID = T1.EVENT
+                        AND T1.TEAM = VICTORY
+                        AND T1.PLAYER = %s
+	 	                AND EVENT.GUILD = '%s'
+                        AND T1.EVENT = (SELECT EVENT FROM TEAMS T2 WHERE T2.EVENT = T1.EVENT AND T2.TEAM != T1.TEAM AND T2.PLAYER = TE.PLAYER)) AS EV_WIN,
+                    COUNT(TE.PLAYER) GAMES
+                FROM
+                    (
+                    SELECT PLAYER, CASE WHEN LOSE=2 THEN 1 ELSE 0 END as WIN FROM MATCH, EVENT WHERE OPPONENT = %s AND MATCH.EVENT = EVENT.ID AND EVENT.GUILD = '%s' 
+                    union all 
+                    SELECT OPPONENT, CASE WHEN WIN=2 THEN 1 ELSE 0 END as WIN FROM MATCH, EVENT WHERE PLAYER = %s AND MATCH.EVENT = EVENT.ID AND EVENT.GUILD = '%s' 
+                    ) AS TE 
+                GROUP BY PLAYER
+                ORDER BY GAMES DESC
+                LIMIT 10"""
 SQL_TEAM_FORMATION = """UPDATE
                             TEAMS
                         SET
@@ -82,7 +102,26 @@ async def send_file(ctx):
         await target_channel.send(file=file_data)
 
 
-def read_score(ctx):
+def read_player_vs(ctx, player = None):
+    conn = None
+    rows = None
+    if player is not None:
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(SQL_PLAYER_VS, (player.mention, ctx.guild_id, player.mention, ctx.guild_id, player.mention, ctx.guild_id,))
+            rows = cur.fetchall()
+            conn.commit()
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+        finally:
+            if conn is not None:
+                conn.close()
+        return rows
+
+
+def read_score(ctx, player = None):
     conn = None
     rows = None
     try:
@@ -103,11 +142,11 @@ def read_score(ctx):
                     COALESCE(SUM(1) filter (where ev.victory = te.team), 0) as victory,
                     count(te.team) as champs,
                     (
-                    (SELECT COUNT(ma.id) from MATCH as ma WHERE te.player = ma.player AND ma.win = 2)
+                    (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s'AND te.player = ma.player AND ma.win = 2)
                         +
-                    (SELECT COUNT(ma.id) from MATCH as ma WHERE te.player = ma.opponent AND ma.lose = 2)
+                    (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s' AND te.player = ma.opponent AND ma.lose = 2)
                     ) win,
-                    (SELECT COUNT(ma.id) from MATCH as ma WHERE te.player = ma.player OR  ma.opponent = te.player) matches,
+                    (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s' AND (te.player = ma.player OR  ma.opponent = te.player)) matches,
                     CEIL((SELECT MAX(CT) FROM (SELECT COUNT(event) AS CT from teams group by player))/10.0) as treshhold
                 FROM 
                     teams as te,
@@ -116,12 +155,13 @@ def read_score(ctx):
                     ev.id = te.event
                 AND ev.victory IS NOT NULL
                 AND ev.guild = '%s'
+                AND (%s OR te.player = %s)
                 GROUP BY te.player)
                 WHERE
                 champs >= treshhold
                 ORDER BY event_stat DESC, match_stat DESC, champs DESC, matches DESC, player DESC
                 LIMIT 20
-                """, (ctx.guild_id,))
+                """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention),))
         rows = cur.fetchall()
         conn.commit()
         cur.close()

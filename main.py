@@ -108,10 +108,10 @@ async def result(ctx, player_win: discord.User,
 
 
 @ bot.command(name='history', description='Event list or history details for specific events.')
-async def history(ctx, event_id: int = None, channel: bool = False):
+async def history(ctx, event_id: int = None):
     await ctx.response.defer()
     if event_id is None:
-        embed = functions.print_history(ctx, channel)
+        embed = functions.print_history(ctx)
     else:
         embed = functions.print_event(ctx, event_id)
     await ctx.followup.send(embed=embed, ephemeral=True)
@@ -134,16 +134,23 @@ async def ids(ctx):
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='score', description='All time scoreboard for the channel!')
-async def score(ctx):
+@ bot.command(name='score', description='All time scoreboard for the server!')
+async def score(ctx, player: discord.User = None):
     await ctx.response.defer()
-    list = data_base.read_score(ctx)
     embed = discord.Embed(title="__**Scoreboard:**__", color=0x03f8fc)
+    list = data_base.read_score(ctx, player)
     pos = 0
     for match in list:
         pos = pos + 1
-        embed.add_field(name=f'Rank: {pos}',
+        embed.add_field(name=(f'Rank: {pos}') if len(list) > 1 else '',
                         value=f'Player: {match[4]}\nDraft: {match[0]}/{match[1]} - {match[5]}%\nMatch: {match[2]}/{match[3]} - {match[6]}%', inline=True)
+    if player is not None:
+        list = data_base.read_player_vs(ctx, player)
+        pos = 0
+        for match in list:
+            pos = pos + 1
+            embed.add_field(name=f'Encounters: {match[3]}',
+                            value=f'Opponent: {match[0]}\nDraft: {match[2]}/{match[3]} - {match[2]/match[3]*100}%\nMatch: {match[1]}/{match[3]} - {match[1]/match[3]*100}%', inline=False)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
