@@ -147,7 +147,7 @@ def read_score(ctx, player = None):
                     (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s' AND te.player = ma.opponent AND ma.lose = 2)
                     ) win,
                     (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s' AND (te.player = ma.player OR  ma.opponent = te.player)) matches,
-                    CEIL((SELECT MAX(CT) FROM (SELECT COUNT(event) AS CT from teams group by player))/10.0) as treshhold
+                    CEIL((SELECT MAX(CT) FROM (SELECT COUNT(event) AS CT from teams, event evv where teams.EVENT = evv.ID AND evv.GUILD = '%s' group by player))/10.0) as treshhold
                 FROM 
                     teams as te,
                     event as ev
@@ -158,10 +158,10 @@ def read_score(ctx, player = None):
                 AND (%s OR te.player = %s)
                 GROUP BY te.player)
                 WHERE
-                (%s OR (champs + 1) >= treshhold)
+                (%s OR champs >= treshhold)
                 ORDER BY event_stat DESC, match_stat DESC, champs DESC, matches DESC, player DESC
                 LIMIT 20
-                """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention), (True if player is not None else False),))
+                """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention), (True if player is not None else False),))
         rows = cur.fetchall()
         conn.commit()
         cur.close()
