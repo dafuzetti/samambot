@@ -74,8 +74,8 @@ def start(ctx):
     return event_id
 
 
-def print_history(ctx, channel: bool = False):
-    hist = data_base.read_events(ctx, channel)
+def print_history(ctx):
+    hist = data_base.read_events(ctx)
     embed = discord.Embed(title="__**Events**__", color=0x03f8fc)
     count = 0
     dates = ''
