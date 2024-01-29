@@ -134,8 +134,8 @@ def read_score(ctx, player = None):
                     win,
                     matches,
                     player,
-                    (victory * 100/champs) event_stat,
-                    (win * 100/matches) match_stat
+                    ROUND((victory::numeric * 100)/ champs::numeric, 2) event_stat,
+                    ROUND((win::numeric * 100)/ matches::numeric, 2) match_stat
                 FROM
                 (SELECT
                     te.player,
