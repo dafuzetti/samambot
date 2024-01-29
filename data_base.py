@@ -158,7 +158,7 @@ def read_score(ctx, player = None):
                 AND (%s OR te.player = %s)
                 GROUP BY te.player)
                 WHERE
-                (%s OR champs >= treshhold)
+                (%s OR (champs + 1) >= treshhold)
                 ORDER BY event_stat DESC, match_stat DESC, champs DESC, matches DESC, player DESC
                 LIMIT 20
                 """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention), (True if player is not None else False),))
