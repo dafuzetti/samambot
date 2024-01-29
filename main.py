@@ -150,7 +150,7 @@ async def score(ctx, player: discord.User = None):
         for match in list:
             pos = pos + 1
             embed.add_field(name=f'Encounters: {match[3]}',
-                            value=f'Opponent: {match[0]}\nDraft: {match[2]}/{match[3]} - {round(match[2]/match[3]*100, 2)}%\nMatch: {match[1]}/{match[3]} - {round(match[1]/match[3]*100, 2)}%', inline=True)
+                            value=f'VS: {match[0]}\nDraft: {match[2]}/{match[3]} - {round(match[2]/match[3]*100, 2)}%\nMatch: {match[1]}/{match[3]} - {round(match[1]/match[3]*100, 2)}%', inline=True)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
