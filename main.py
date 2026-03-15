@@ -69,7 +69,7 @@ async def event(ctx, action: str = ''):
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='movehere', description='Report a match that you lose.')
+@ bot.command(name='movehere', description='Move an event to this channel.')
 async def movehere(ctx, event_id: int):
     await ctx.response.defer()
     name = "_event-" + str(event_id) + "_"
