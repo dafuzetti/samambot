@@ -11,7 +11,7 @@ client = discord.Client(intents=intents)
 bot = app_commands.CommandTree(client)
 
 
-@ bot.command(name='newevent', description='Create new event. teams: 2-A vs B or 0-Individual. Type: 0-all possible matches')
+@ bot.command(name='newevent', description='Create new team event.')
 async def newevent(ctx):
     teams: int = 2
     type: int = 0
@@ -29,17 +29,25 @@ async def play(ctx):
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
-
-@ bot.command(name='team',
-              description='Add up to 4 players to a team for the event.')
-async def team(ctx, p1: discord.User = None,
-               p2: discord.User = None, p3: discord.User = None,
-               p4: discord.User = None):
+@ bot.command(name='team-b',
+              description='Add up to 4 players to team B.')
+async def teamb(ctx, p1: discord.User = None,
+                 p2: discord.User = None, p3: discord.User = None,
+                 p4: discord.User = None):
     await ctx.response.defer()
-    functions.add_players(ctx, True, p1, p2, p3, p4)
+    functions.define_team(ctx, 2, p1, p2, p3, p4)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
+@ bot.command(name='team-a',
+              description='Add up to 4 players to team A.')
+async def teama(ctx, p1: discord.User = None,
+                 p2: discord.User = None, p3: discord.User = None,
+                 p4: discord.User = None):
+    await ctx.response.defer()
+    functions.define_team(ctx, 1, p1, p2, p3, p4)
+    embed = functions.print_event(ctx)
+    await ctx.followup.send(embed=embed, ephemeral=True)
 
 @ bot.command(name='players', description='Add up to 8 players to the event.')
 async def players(ctx, p1: discord.User, p2: discord.User = None,
@@ -154,11 +162,23 @@ async def score(ctx, player: discord.User = None):
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
+@ bot.command(name='help', description='Show help for using the bot.')
+async def help(ctx):
+    await ctx.response.defer()
+    embed = discord.Embed(title="__**Bot Help**__", color=0x03f8fc)
+    embed.add_field(name='Creating an Event', value='Use `/newevent` to create a new event in the current channel.', inline=False)
+    embed.add_field(name='Populating Players', value='**Individual Join:** `/play` (join as yourself)\n**Add Multiple Individuals:** `/players @p1 @p2 ...` (up to 8)\n**Add to Team A:** `/team-a @p1 @p2 @p3 @p4`\n**Add to Team B:** `/team-b @p1 @p2 @p3 @p4`', inline=False)
+    embed.add_field(name='Starting an Event', value='Use `/event start` to begin the event and generate match pairings.', inline=False)
+    embed.add_field(name='Closing an Event', value='Use `/event close` to end the event and determine the winner.', inline=False)
+    embed.add_field(name='Other Commands', value='`/event clear` - Remove all players\n`/event teams` - Auto-assign teams\n`/movehere <event_id>` - Move event to this channel\nReport results: `/win @loser`, `/lose @winner`, `/result @winner @loser`\nView: `/history`, `/score`, `/ids`', inline=False)
+    await ctx.followup.send(embed=embed, ephemeral=True)
+
+
 @ client.event
 async def on_ready():
     await client.change_presence()
     await bot.sync()
-    print('Running')
+    print('Synced commands!')
 
 
 client.run(my_secret)

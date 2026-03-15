@@ -21,6 +21,14 @@ def add_players(ctx, same_team, p1: discord.User, p2: discord.User = None,
     list.append(p8)
     data_base.new_player(ctx, list, same_team)
 
+def define_team(ctx, team_id: int, p1: discord.User, p2: discord.User = None,
+                p3: discord.User = None, p4: discord.User = None):
+    list = []
+    list.append(p1)
+    list.append(p2)
+    list.append(p3)
+    list.append(p4)
+    data_base.new_team(ctx, list, team_id)
 
 async def channelnameopen(channel, event_id = None):
     name = channel.name
