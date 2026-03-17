@@ -19,7 +19,21 @@ def add_players(ctx, same_team, p1: discord.User, p2: discord.User = None,
     list.append(p6)
     list.append(p7)
     list.append(p8)
-    data_base.new_player(ctx, list, same_team)
+    event = data_base.new_player(ctx, list, same_team)
+    return event
+
+
+def add_random_players(ctx, num=4):
+    player_strings = data_base.get_random_past_players(ctx, num)
+    user_list = []
+    event_id = None
+    for p_str in player_strings:
+        user = type('User', (), {'mention': p_str})()
+        if user:
+            user_list.append(user)
+    if user_list:
+        event_id = add_players(ctx, False, *user_list)
+    return event_id
 
 
 async def channelnameopen(channel, event_id = None):
