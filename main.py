@@ -11,23 +11,24 @@ client = discord.Client(intents=intents)
 bot = app_commands.CommandTree(client)
 
 
-@ bot.command(name='newevent', description='Create new team event.')
-async def newevent(ctx):
-    teams: int = 2
-    type: int = 0
+@ bot.command(name='join', description='Join the event.')
+async def join(ctx):
     await ctx.response.defer()
-    event_id = data_base.new_event(ctx, teams, type)
+    event_id = functions.add_players(ctx, False, ctx.user)
     await functions.channelnameopen(ctx.channel, event_id)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='play', description='Join the event.')
-async def play(ctx):
+@ bot.command(name='team',
+              description='Add up to 4 players to a team for the event.')
+async def team(ctx, p1: discord.User = None,
+               p2: discord.User = None, p3: discord.User = None,
+               p4: discord.User = None):
     await ctx.response.defer()
-    functions.add_players(ctx, False, ctx.user)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
+    event_id = functions.add_players(ctx, True, p1, p2, p3, p4)
+    await functions.channelnameopen(ctx.channel, event_id)
+    
 
 @ bot.command(name='team-b',
               description='Add up to 4 players to team B.')
@@ -55,7 +56,8 @@ async def players(ctx, p1: discord.User, p2: discord.User = None,
                   p5: discord.User = None, p6: discord.User = None,
                   p7: discord.User = None, p8: discord.User = None):
     await ctx.response.defer()
-    functions.add_players(ctx, False, p1, p2, p3, p4, p5, p6, p7, p8)
+    event_id = functions.add_players(ctx, False, p1, p2, p3, p4, p5, p6, p7, p8)
+    await functions.channelnameopen(ctx.channel, event_id)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
@@ -66,6 +68,9 @@ async def event(ctx, action: str = ''):
     event_id = None
     if action.lower() == 'start':
         event_id = functions.start(ctx)
+    elif action.lower() == 'rdm':
+        event_id = functions.add_random_players(ctx)
+        await functions.channelnameopen(ctx.channel, event_id)
     elif action.lower() == 'close':
         event_id = data_base.close_event(ctx)
         await functions.channelnameclose(ctx.channel, event_id)
