@@ -12,6 +12,7 @@ SQL_UPDATE_MOVEEVENT = """UPDATE event SET channel = %s WHERE id = %s AND guild 
 SQL_INSERT_TEAMS = """INSERT INTO teams(event, player, team)
             VALUES(%s, %s, %s);"""
 SQL_DELETE_TEAMS = """DELETE FROM teams WHERE event = '%s';"""
+SQL_DELETE_TEAM = """DELETE FROM teams WHERE event = '%s' AND team = %s;"""
 SQL_DELETE_PLAYER = """DELETE FROM teams WHERE event = '%s' AND PLAYER = %s;"""
 SQL_INSERT_MATCH = """INSERT INTO match(event, player, opponent)
             SELECT %s, %s, %s WHERE NOT EXISTS (SELECT id FROM
@@ -310,6 +311,30 @@ def new_player(ctx, player_list, same_team=False):
             if conn is not None:
                 conn.close()
     return event_id
+
+
+def new_team(ctx, player_list, team_id):
+    conn = None
+    event_id = find_event(ctx)
+    if event_id is not None:
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(SQL_DELETE_TEAM,
+                        (event_id, team_id,))
+            for player in player_list:
+                if player is not None:
+                    cur.execute(SQL_DELETE_PLAYER,
+                                (event_id, player.mention,))
+                    cur.execute(SQL_INSERT_TEAMS,
+                                (event_id, player.mention, team_id,))
+            conn.commit()
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+        finally:
+            if conn is not None:
+                conn.close()
 
 
 def clear_event(ctx):
