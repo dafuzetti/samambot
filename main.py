@@ -20,16 +20,6 @@ async def join(ctx):
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='team',
-              description='Add up to 4 players to a team for the event.')
-async def team(ctx, p1: discord.User = None,
-               p2: discord.User = None, p3: discord.User = None,
-               p4: discord.User = None):
-    await ctx.response.defer()
-    event_id = functions.add_players(ctx, True, p1, p2, p3, p4)
-    await functions.channelnameopen(ctx.channel, event_id)
-    
-
 @ bot.command(name='team-b',
               description='Add up to 4 players to team B.')
 async def teamb(ctx, p1: discord.User = None,
@@ -167,23 +157,41 @@ async def score(ctx, player: discord.User = None):
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='help', description='Show help for using the bot.')
-async def help(ctx):
+@ bot.command(name='help', description='Show available commands.')
+async def help(ctx, lang: str = 'EN'):
     await ctx.response.defer()
-    embed = discord.Embed(title="__**Bot Help**__", color=0x03f8fc)
-    embed.add_field(name='Creating an Event', value='Use `/newevent` to create a new event in the current channel.', inline=False)
-    embed.add_field(name='Populating Players', value='**Individual Join:** `/play` (join as yourself)\n**Add Multiple Individuals:** `/players @p1 @p2 ...` (up to 8)\n**Add to Team A:** `/team-a @p1 @p2 @p3 @p4`\n**Add to Team B:** `/team-b @p1 @p2 @p3 @p4`', inline=False)
-    embed.add_field(name='Starting an Event', value='Use `/event start` to begin the event and generate match pairings.', inline=False)
-    embed.add_field(name='Closing an Event', value='Use `/event close` to end the event and determine the winner.', inline=False)
-    embed.add_field(name='Other Commands', value='`/event clear` - Remove all players\n`/event teams` - Auto-assign teams\n`/movehere <event_id>` - Move event to this channel\nReport results: `/win @loser`, `/lose @winner`, `/result @winner @loser`\nView: `/history`, `/score`, `/ids`', inline=False)
-    await ctx.followup.send(embed=embed, ephemeral=True)
+
+    lang = lang.strip().upper()
+    lang_map = {'EN': 0, 'PT': 1}
+    index = lang_map.get(lang)
+    if index is None:
+        await ctx.followup.send("Invalid language. Use `EN` or `PT`.", ephemeral=True)
+        return
+
+    try:
+        with open('HELP_TEXT.md', 'r', encoding='utf-8') as f:
+            content = f.read().strip().split('\n---\n')
+    except Exception as e:
+        await ctx.followup.send(f"Could not load help text: {e}", ephemeral=True)
+        return
+
+    if index >= len(content):
+        await ctx.followup.send("Help text not available for the requested language.", ephemeral=True)
+        return
+
+    section = content[index]
+
+    max_len = 1900
+    parts = [section[i:i+max_len] for i in range(0, len(section), max_len)]
+    for part in parts:
+        await ctx.followup.send(f"```md\n{part}\n```", ephemeral=True)
 
 
 @ client.event
 async def on_ready():
     await client.change_presence()
     await bot.sync()
-    print('Synced commands!')
+    print('Ready!')
 
 
 client.run(my_secret)
