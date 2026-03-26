@@ -10,10 +10,10 @@ SQL_INSERT_EVENT = """INSERT INTO event(guild, channel, date, teams, type)
 SQL_UPDATE_EVENT = """UPDATE event SET victory = %s WHERE id = %s;"""
 SQL_UPDATE_MOVEEVENT = """UPDATE event SET channel = %s WHERE id = %s AND guild = '%s';"""
 SQL_INSERT_TEAMS = """INSERT INTO teams(event, player, team)
-            VALUES(%s, %s, %s);"""
+            VALUES(%s, CONCAT('<@', %s, '>'), %s);"""
 SQL_DELETE_TEAMS = """DELETE FROM teams WHERE event = '%s';"""
 SQL_DELETE_TEAM = """DELETE FROM teams WHERE event = '%s' AND team = %s;"""
-SQL_DELETE_PLAYER = """DELETE FROM teams WHERE event = '%s' AND PLAYER = %s;"""
+SQL_DELETE_PLAYER = """DELETE FROM teams WHERE event = '%s' AND PLAYER = CONCAT('<@', %s, '>');"""
 SQL_INSERT_MATCH = """INSERT INTO match(event, player, opponent)
             SELECT %s, %s, %s WHERE NOT EXISTS (SELECT id FROM
             match WHERE event = %s AND player = %s and opponent = %s);"""
@@ -94,23 +94,14 @@ def get_conn():
     return connection
 
 
-async def send_file(ctx):
-    file_path = None
-    target_channel = discord.utils.get(
-        ctx.guild.channels, name='db')
-    with open(file_path, 'rb') as file:
-        file_data = discord.File(file)
-        await target_channel.send(file=file_data)
-
-
-def read_player_vs(ctx, player = None):
+def read_player_vs(ctx_guild, ctx_channel, player = None):
     conn = None
     rows = None
     if player is not None:
         try:
             conn = get_conn()
             cur = conn.cursor()
-            cur.execute(SQL_PLAYER_VS, (player.mention, ctx.guild_id, player.mention, ctx.guild_id, player.mention, ctx.guild_id,))
+            cur.execute(SQL_PLAYER_VS, (player.mention, ctx_guild, player.mention, ctx_guild, player.mention, ctx_guild,))
             rows = cur.fetchall()
             conn.commit()
             cur.close()
@@ -122,7 +113,7 @@ def read_player_vs(ctx, player = None):
         return rows
 
 
-def read_score(ctx, player = None):
+def read_score(ctx_guild, ctx_channel, player = None):
     conn = None
     rows = None
     try:
@@ -162,7 +153,7 @@ def read_score(ctx, player = None):
                 (%s OR champs >= treshhold)
                 ORDER BY event_stat DESC, match_stat DESC, champs DESC, matches DESC, player DESC
                 LIMIT 20
-                """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention), (True if player is not None else False),))
+                """, (ctx_guild, ctx_guild, ctx_guild, ctx_guild, ctx_guild, (True if player is None else False), (None if player is None else player.mention), (True if player is not None else False),))
         rows = cur.fetchall()
         conn.commit()
         cur.close()
@@ -174,7 +165,7 @@ def read_score(ctx, player = None):
     return rows
 
 
-def read_events(ctx, channel=False):
+def read_events(ctx_guild, ctx_channel, channel=False):
     conn = None
     rows = None
     try:
@@ -189,13 +180,13 @@ def read_events(ctx, channel=False):
                             event.victory,
                             CONCAT('<#', channel, '>') as chanel_tag,
                             (select count(player) from teams where event.id = teams.event) AS players
-                        FROM event WHERE guild = '%s' AND """
+                        FROM event  WHERE guild = '%s' AND """
         if channel:
             query_events = query_events + " channel = '%s' "
         else:
             query_events = query_events + " '%s' IS NOT NULL "
         query_events = query_events + "ORDER BY date;"
-        cur.execute(query_events, (ctx.guild_id, ctx.channel_id,))
+        cur.execute(query_events, (ctx_guild, ctx_channel,))
         rows = cur.fetchall()
         cur.close()
     except (Exception, psycopg2.DatabaseError) as error:
@@ -205,9 +196,9 @@ def read_events(ctx, channel=False):
             conn.close()
     return rows
 
-def team_formation(ctx):
+def team_formation(ctx_guild, ctx_channel):
     conn = None
-    event_id = find_event(ctx)
+    event_id = find_event(ctx_guild, ctx_channel)
     if event_id is not None:
         try:
             conn = get_conn()
@@ -222,12 +213,12 @@ def team_formation(ctx):
                 conn.close()
     return event_id
 
-def move_event(ctx, event_id):
+def move_event(ctx_guild, ctx_channel, event_id):
     conn = None
     try:
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute(SQL_UPDATE_MOVEEVENT, (ctx.channel_id, event_id, ctx.guild_id))
+        cur.execute(SQL_UPDATE_MOVEEVENT, (ctx_channel, event_id, ctx_guild))
         conn.commit()
         cur.close()
     except (Exception, psycopg2.DatabaseError) as error:
@@ -236,14 +227,14 @@ def move_event(ctx, event_id):
         if conn is not None:
             conn.close()
 
-def read_event(ctx, event_id):
+def read_event(ctx_guild, ctx_channel, event_id):
     conn = None
     row = None
     try:
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("SELECT id, CONCAT('<#', channel, '>') as chanel_tag, teams, type, victory FROM event WHERE guild = '%s' AND id = '%s'",
-                    (ctx.guild_id, event_id))
+        cur.execute("SELECT id, CONCAT('<#', channel, '>') as chanel_tag, teams, type, victory FROM event WHERE  guild = '%s' AND id = '%s'",
+                    (ctx_guild, event_id))
         row = cur.fetchone()
         cur.close()
     except (Exception, psycopg2.DatabaseError) as error:
@@ -254,7 +245,7 @@ def read_event(ctx, event_id):
     return row
 
 
-def find_event(ctx, create: bool = False):
+def find_event(ctx_guild, ctx_channel, create: bool = False):
     event_id = None
     conn = None
     row = None
@@ -262,13 +253,13 @@ def find_event(ctx, create: bool = False):
         conn = get_conn()
         cur = conn.cursor()
         cur.execute("SELECT id FROM event WHERE guild = '%s' AND channel = '%s' AND victory IS NULL ORDER by id",
-                    (ctx.guild_id, ctx.channel_id,))
+                    (ctx_guild, ctx_channel,))
         row = cur.fetchone()
         if row is not None:
             event_id = row[0]
         else:
             if create:
-                event_id = new_event(ctx)
+                event_id = new_event(ctx_guild, ctx_channel)
                 conn.commit()
         cur.close()
     except (Exception, psycopg2.DatabaseError) as error:
@@ -279,9 +270,9 @@ def find_event(ctx, create: bool = False):
     return event_id
 
 
-def new_player(ctx, player_list, same_team=False):
+def new_player(ctx_guild, ctx_channel, player_list, same_team=False):
     conn = None
-    event_id = find_event(ctx, True)
+    event_id = find_event(ctx_guild, ctx_channel, True)
     team = None
     if event_id is not None:
         try:
@@ -290,7 +281,7 @@ def new_player(ctx, player_list, same_team=False):
             for player in player_list:
                 if player is not None:
                     cur.execute(SQL_DELETE_PLAYER,
-                                (event_id, player.mention,))
+                                (event_id, player,))
                     if team is None or not same_team:
                         cur.execute("""SELECT
                                         TEAM,
@@ -302,7 +293,7 @@ def new_player(ctx, player_list, same_team=False):
                         row = cur.fetchone()
                         team = row[0]
                     cur.execute(SQL_INSERT_TEAMS,
-                                (event_id, player.mention, team,))
+                                (event_id, player, team,))
             conn.commit()
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -313,9 +304,12 @@ def new_player(ctx, player_list, same_team=False):
     return event_id
 
 
-def new_team(ctx, player_list, team_id):
+def new_team(ctx_guild, ctx_channel, event_id, player_list, team_A: bool = True):
     conn = None
-    event_id = find_event(ctx)
+    if team_A:
+        team_id = 1
+    else:
+        team_id = 2
     if event_id is not None:
         try:
             conn = get_conn()
@@ -325,9 +319,9 @@ def new_team(ctx, player_list, team_id):
             for player in player_list:
                 if player is not None:
                     cur.execute(SQL_DELETE_PLAYER,
-                                (event_id, player.mention,))
+                                (event_id, player,))
                     cur.execute(SQL_INSERT_TEAMS,
-                                (event_id, player.mention, team_id,))
+                                (event_id, player, team_id,))
             conn.commit()
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -335,11 +329,12 @@ def new_team(ctx, player_list, team_id):
         finally:
             if conn is not None:
                 conn.close()
+    return event_id
 
 
-def clear_event(ctx):
+def clear_event(ctx_guild, ctx_channel):
     conn = None
-    event_id = find_event(ctx)
+    event_id = find_event(ctx_guild, ctx_channel)
     if event_id is not None:
         try:
             conn = get_conn()
@@ -355,9 +350,9 @@ def clear_event(ctx):
     return event_id
 
 
-def update_matches(ctx, player_w, player_l, lose):
+def update_matches(ctx_guild, ctx_channel, player_w, player_l, lose):
     conn = None
-    event_id = find_event(ctx)
+    event_id = find_event(ctx_guild, ctx_channel)
     if event_id is not None:
         try:
             conn = get_conn()
@@ -376,18 +371,16 @@ def update_matches(ctx, player_w, player_l, lose):
                 conn.close()
 
 
-def save_matches(ctx, list, event = None):
+def save_matches(ctx_guild, ctx_channel, list, event):
     event_id = event
-    if event_id is None:
-        event_id = find_event(ctx)
     conn = None
     if event_id is not None:
         try:
             conn = get_conn()
             cur = conn.cursor()
             for match in list:
-                cur.execute(SQL_INSERT_MATCH, (event_id,
-                            match[0], match[1], event_id, match[0], match[1],))
+                bind_vars = (event_id, match[0], match[1], event_id, match[0], match[1],)
+                result = cur.execute(SQL_INSERT_MATCH, bind_vars)
             conn.commit()
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -398,34 +391,45 @@ def save_matches(ctx, list, event = None):
     return event_id
 
 
-def new_event(ctx, teams: int = 2, type: int = 0):
+def new_event(ctx_guild, ctx_channel, teams: int = 2, type: int = 0):
     conn = None
     event_id = None
     event_date = date.today().strftime("%Y%m%d")
+
     try:
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM event WHERE guild = '%s' AND channel = '%s' AND victory IS NULL",
-                    (ctx.guild_id, ctx.channel_id,))
+
+        cur.execute(
+            "SELECT * FROM event WHERE guild = %s AND channel = %s AND victory IS NULL",
+            (str(ctx_guild), str(ctx_channel))
+        )
         rows = cur.fetchall()
+
         if len(rows) == 0:
-            cur.execute(SQL_INSERT_EVENT, (ctx.guild_id, ctx.channel_id,
-                        event_date, teams, type,))
+            cur.execute(
+                "INSERT INTO event (guild, channel, date, teams, type) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (str(ctx_guild), str(ctx_channel), event_date, teams, type,)
+            )
             event_id = cur.fetchone()[0]
+
         conn.commit()
         cur.close()
-    except (Exception, psycopg2.DatabaseError) as error:
+
+    except Exception as error:
         print(error)
+
     finally:
         if conn is not None:
             conn.close()
+
     return event_id
 
 
-def close_event(ctx, event=None):
+def close_event(ctx_guild, ctx_channel, event=None):
     event_id = event
     if event_id is None:
-        event_id = find_event(ctx)
+        event_id = find_event(ctx_guild, ctx_channel)
     conn = None
     if event_id is not None:
         try:
@@ -495,10 +499,10 @@ def close_event(ctx, event=None):
     return event_id
 
 
-def read_players(ctx, event=None):
+def read_players(ctx_guild, ctx_channel, event=None):
     event_id = event
     if event_id is None:
-        event_id = find_event(ctx)
+        event_id = find_event(ctx_guild, ctx_channel)
     conn = None
     rows = None
     if event_id is not None:
@@ -522,7 +526,7 @@ def read_players(ctx, event=None):
     return dataframe_players(rows)
 
 
-def player_history(ctx):
+def player_history(ctx_guild, ctx_channel):
     conn = None
     rows = None
     try:
@@ -538,7 +542,7 @@ def player_history(ctx):
                 WHERE
                     teams.event = event.id
                 and event.guild = '%s'
-                GROUP BY player ORDER BY event_count DESC;""", (ctx.guild.id,))
+                GROUP BY player ORDER BY event_count DESC;""", (ctx_guild,))
         rows = cur.fetchall()
         conn.commit()
         cur.close()
@@ -550,29 +554,10 @@ def player_history(ctx):
     return rows
 
 
-def get_random_past_players(ctx, num=4):
-    conn = None
-    rows = None
-    try:
-        conn = get_conn()
-        cur = conn.cursor()
-        cur.execute(
-            """SELECT DISTINCT player FROM teams WHERE event IN (SELECT id FROM event WHERE guild = '%s' AND victory IS NOT NULL) LIMIT %s""", (ctx.guild_id, num))
-        rows = cur.fetchall()
-        conn.commit()
-        cur.close()
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
-    finally:
-        if conn is not None:
-            conn.close()
-    return [row[0] for row in rows] if rows else []
-
-
-def read_matches(ctx, event=None):
+def read_matches(ctx_guild, ctx_channel, event=None):
     event_id = event
     if event_id is None:
-        event_id = find_event(ctx)
+        event_id = find_event(ctx_guild, ctx_channel)
     conn = None
     rows = None
     if event_id is not None:

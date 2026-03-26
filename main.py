@@ -1,197 +1,135 @@
-from discord import app_commands
 import discord
-import data_base
-import functions
-import re
+from discord import app_commands
+from discord.ext import commands
 from decouple import config
 
-my_secret = config("TOKEN")
+import EventView
+import data_base
+import functions
+
+TOKEN = config("TOKEN")
+
 intents = discord.Intents.default()
-client = discord.Client(intents=intents)
-bot = app_commands.CommandTree(client)
+intents.members = True
 
+bot = commands.Bot(command_prefix="!", intents=intents)
+tree = bot.tree
 
-@ bot.command(name='join', description='Join the event.')
-async def join(ctx):
-    await ctx.response.defer()
-    event_id = functions.add_players(ctx, False, ctx.user)
-    await functions.channelnameopen(ctx.channel, event_id)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
+# Store event per channel
+events = {}
 
+@tree.command(name="event", description="Start an event")
+async def event(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
 
-@ bot.command(name='team-b',
-              description='Add up to 4 players to team B.')
-async def teamb(ctx, p1: discord.User = None,
-                 p2: discord.User = None, p3: discord.User = None,
-                 p4: discord.User = None):
-    await ctx.response.defer()
-    functions.define_team(ctx, 2, p1, p2, p3, p4)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-@ bot.command(name='team-a',
-              description='Add up to 4 players to team A.')
-async def teama(ctx, p1: discord.User = None,
-                 p2: discord.User = None, p3: discord.User = None,
-                 p4: discord.User = None):
-    await ctx.response.defer()
-    functions.define_team(ctx, 1, p1, p2, p3, p4)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-@ bot.command(name='players', description='Add up to 8 players to the event.')
-async def players(ctx, p1: discord.User, p2: discord.User = None,
-                  p3: discord.User = None, p4: discord.User = None,
-                  p5: discord.User = None, p6: discord.User = None,
-                  p7: discord.User = None, p8: discord.User = None):
-    await ctx.response.defer()
-    event_id = functions.add_players(ctx, False, p1, p2, p3, p4, p5, p6, p7, p8)
-    await functions.channelnameopen(ctx.channel, event_id)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='event', description='Manage current event.')
-async def event(ctx, action: str = ''):
-    await ctx.response.defer()
-    event_id = None
-    if action.lower() == 'start':
-        event_id = functions.start(ctx)
-    elif action.lower() == 'rdm':
-        event_id = functions.add_random_players(ctx)
-        await functions.channelnameopen(ctx.channel, event_id)
-    elif action.lower() == 'close':
-        event_id = data_base.close_event(ctx)
-        await functions.channelnameclose(ctx.channel, event_id)
-    elif action.lower() == 'clear':
-        event_id = data_base.clear_event(ctx)
-    elif action.lower() == 'teams':
-        event_id = data_base.team_formation(ctx)
-    embed = functions.print_event(ctx, event_id)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='movehere', description='Move an event to this channel.')
-async def movehere(ctx, event_id: int):
-    await ctx.response.defer()
-    name = "_event-" + str(event_id) + "_"
-    for chann in ctx.guild.channels:
-        if chann.name.endswith(name):
-            await functions.channelnameclose(chann, event_id)
-    data_base.move_event(ctx, event_id)
-    embed = functions.print_event(ctx)
-    await functions.channelnameopen(ctx.channel, event_id)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='lose', description='Report a match that you lose.')
-async def lose(ctx, player_win: discord.User, gameloss: int = 0):
-    await ctx.response.defer()
-    functions.resultado(ctx, player_win.mention, ctx.user.mention, gameloss)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='win', description='Report a match that you won.')
-async def win(ctx, player_lost: discord.User, gameloss: int = 0):
-    await ctx.response.defer()
-    functions.resultado(ctx, ctx.user.mention, player_lost.mention, gameloss)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='result', description='Report the result of a match.')
-async def result(ctx, player_win: discord.User,
-                 player_lose: discord.User, gameloss: int = 0):
-    await ctx.response.defer()
-    functions.resultado(ctx, player_win.mention, player_lose.mention, gameloss)
-    embed = functions.print_event(ctx)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='history', description='Event list or history details for specific events.')
-async def history(ctx, event_id: int = None):
-    await ctx.response.defer()
-    if event_id is None:
-        embed = functions.print_history(ctx)
-    else:
-        embed = functions.print_event(ctx, event_id)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='ids', description='History of draft\'s dates list.')
-async def ids(ctx):
-    await ctx.response.defer()
-    embed = discord.Embed(
-        title=f"__**Server ID: {ctx.guild.id}**__", color=0x03f8fc)
-    count = 0
-    players = ''
-    list = data_base.player_history(ctx)
-    for player in list:
-        count = count + 1
-        players = players + str(count) + '-' + player[0] + ' (' + str(
-            player[1]) + '): ' + str(player[0])[2:~0] + '\n'
-
-    embed.add_field(name='Players', value=players, inline=False)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='score', description='All time scoreboard for the server!')
-async def score(ctx, player: discord.User = None):
-    await ctx.response.defer()
-    embed = discord.Embed(title="__**Scoreboard:**__", color=0x03f8fc)
-    list = data_base.read_score(ctx, player)
-    pos = 0
-    for match in list:
-        pos = pos + 1
-        embed.add_field(name=(f'Rank: {pos}') if len(list) > 1 else '',
-                        value=f'Player: {match[4]}\nDraft: {match[0]}/{match[1]} - {match[5]}%\nMatch: {match[2]}/{match[3]} - {match[6]}%', inline=True)
-    if player is not None:
-        list = data_base.read_player_vs(ctx, player)
-        pos = 0
-        for match in list:
-            pos = pos + 1
-            embed.add_field(name=f'Encounters: {match[3]}',
-                            value=f'VS: {match[0]}\nDraft: {match[2]}/{match[3]} - {round(match[2]/match[3]*100, 2)}%\nMatch: {match[1]}/{match[3]} - {round(match[1]/match[3]*100, 2)}%', inline=True)
-    await ctx.followup.send(embed=embed, ephemeral=True)
-
-
-@ bot.command(name='help', description='Show available commands.')
-async def help(ctx, lang: str = 'EN'):
-    await ctx.response.defer()
-
-    lang = lang.strip().upper()
-    lang_map = {'EN': 0, 'PT': 1}
-    index = lang_map.get(lang)
-    if index is None:
-        await ctx.followup.send("Invalid language. Use `EN` or `PT`.", ephemeral=True)
-        return
+    await create_event(interaction)
 
     try:
-        with open('HELP_TEXT.md', 'r', encoding='utf-8') as f:
-            content = f.read().strip().split('\n---\n')
+        await event_message(interaction)
     except Exception as e:
-        await ctx.followup.send(f"Could not load help text: {e}", ephemeral=True)
+        await interaction.followup.send(f"Error: {e}", ephemeral=True)
         return
 
-    if index >= len(content):
-        await ctx.followup.send("Help text not available for the requested language.", ephemeral=True)
+
+async def create_event(interaction: discord.Interaction, player: discord.Member = None, teamA: bool = True):
+    view_event = events.get(interaction.channel.id)
+
+    if view_event is None:
+        event_id = data_base.find_event(interaction.guild.id, interaction.channel.id)
+        if event_id:
+            matches = data_base.read_matches(interaction.guild.id, interaction.channel.id, event_id)
+            if len(matches) > 0:
+                event_content = data_base.read_event(interaction.guild.id, interaction.channel.id, event_id)
+                players = data_base.read_players(interaction.guild.id, interaction.channel.id, event_id)
+                view_event = EventView.RunningEventView(interaction=interaction, events=events, event_id=event_id, matches=matches, event_content=event_content, players=players)
+                await functions.channelnameopen(interaction.channel, event_id)
+        if not view_event:
+            view_event = EventView.CreatingEventView(interaction=interaction, events=events)
+            view_event.add_player(player, team_a=teamA)
+        events[interaction.channel.id] = view_event
+    return view_event
+
+async def event_message(interaction: discord.Interaction):
+    view_event = events.get(interaction.channel.id)
+    if view_event.message_id is not None:
+        try:
+            message = await interaction.channel.fetch_message(view_event.message_id)
+            if message:
+                await message.edit(embed=view_event.build_embed(), view=view_event)
+                await interaction.followup.send("See event message!", ephemeral=True)
+            else:
+                view_event.message_id = None
+        except Exception as e:
+            await interaction.followup.send(f"Error: {e}", ephemeral=True)
+    if view_event.message_id is None:
+        try:
+            message = await interaction.channel.send(
+                embed=view_event.build_embed(),
+                view=view_event
+            )
+            view_event.message_id = message.id
+            await interaction.followup.send("See event message!", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"Error: {e}", ephemeral=True)
+    events[interaction.channel.id] = view_event
+
+
+async def add_player(interaction: discord.Interaction, user: discord.Member, team_a: bool = True):
+    await interaction.response.defer(ephemeral=True)
+
+    view = events.get(interaction.channel.id)
+    if not view:
+        view = await create_event(interaction, user, team_a)
+
+    view.add_player(user, team_a=team_a)
+    view.update_buttons()
+
+    try:
+        await event_message(interaction)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}", ephemeral=True)
         return
 
-    section = content[index]
+    team_name = "Team A" if team_a else "Team B"
+    await interaction.followup.send(
+        f"{user.mention} added to **{team_name}**",
+        ephemeral=True
+    )
 
-    max_len = 1900
-    parts = [section[i:i+max_len] for i in range(0, len(section), max_len)]
-    for part in parts:
-        await ctx.followup.send(f"```md\n{part}\n```", ephemeral=True)
+
+@tree.command(name="adda", description="Add player to Team A")
+@app_commands.describe(user="User to add")
+async def adda(interaction: discord.Interaction, user: discord.Member):
+    await add_player(interaction, user, team_a=True)
+        
+
+@tree.command(name="addb", description="Add player to Team B")
+@app_commands.describe(user="User to add")
+async def addb(interaction: discord.Interaction, user: discord.Member):
+    await add_player(interaction, user, team_a=False)
 
 
-@ client.event
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    # allow commands (optional depending on setup)
+    if message.content.startswith("/"):
+        return
+
+    if message.channel.id in events:
+        await message.delete()
+
+# admin only para fechar evento
+# refazer queries 
+# salvar match rsultados
+# contador de eventos por guild ID?
+# close event ta piscando os botoes apos o click / remover duplo click nos comandos
+# comandos de estatistica 
+@bot.event
 async def on_ready():
-    await client.change_presence()
-    await bot.sync()
-    print('Ready!')
+    await tree.sync()
+    print(f"Logged in as {bot.user}")
 
-
-client.run(my_secret)
+bot.run(TOKEN)
