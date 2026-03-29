@@ -3,8 +3,10 @@ from discord import app_commands
 from discord.ext import commands
 from decouple import config
 
-import EventView
-import data_base
+from views.CreatingEventView import CreatingEventView
+from views.RunningEventView import RunningEventView
+from classes.Event import Event
+import db.db_event as db_event
 import functions
 
 TOKEN = config("TOKEN")
@@ -18,8 +20,8 @@ tree = bot.tree
 # Store event per channel
 events = {}
 
-@tree.command(name="event", description="Start an event")
-async def event(interaction: discord.Interaction):
+@tree.command(name="new_event", description="Start an event")
+async def new_event(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
 
     await create_event(interaction)
@@ -35,47 +37,51 @@ async def create_event(interaction: discord.Interaction, player: discord.Member 
     view_event = events.get(interaction.channel.id)
 
     if view_event is None:
-        event_id = data_base.find_event(interaction.guild.id, interaction.channel.id)
-        if event_id:
-            matches = data_base.read_matches(interaction.guild.id, interaction.channel.id, event_id)
-            if len(matches) > 0:
-                event_content = data_base.read_event(interaction.guild.id, interaction.channel.id, event_id)
-                players = data_base.read_players(interaction.guild.id, interaction.channel.id, event_id)
-                view_event = EventView.RunningEventView(interaction=interaction, events=events, event_id=event_id, matches=matches, event_content=event_content, players=players)
-                await functions.channelnameopen(interaction.channel, event_id)
-        if not view_event:
-            view_event = EventView.CreatingEventView(interaction=interaction, events=events)
+        event_data = db_event.find_event(interaction.guild.id, interaction.channel.id)
+        if event_data is not None:
+            view_event = RunningEventView(
+                interaction=interaction,
+                events=events, 
+                event=event_data,
+            )
+        else:
+            view_event = CreatingEventView(interaction=interaction, events=events)
             view_event.add_player(player, team_a=teamA)
         events[interaction.channel.id] = view_event
     return view_event
 
+
 async def event_message(interaction: discord.Interaction):
     view_event = events.get(interaction.channel.id)
-    if view_event.message_id is not None:
-        try:
-            message = await interaction.channel.fetch_message(view_event.message_id)
-            if message:
-                await message.edit(embed=view_event.build_embed(), view=view_event)
-                await interaction.followup.send("See event message!", ephemeral=True)
-            else:
+    if view_event is not None:
+        if view_event.message_id is not None:
+            try:
+                message = await interaction.channel.fetch_message(view_event.message_id)
+            except Exception as e:
                 view_event.message_id = None
-        except Exception as e:
-            await interaction.followup.send(f"Error: {e}", ephemeral=True)
-    if view_event.message_id is None:
-        try:
-            message = await interaction.channel.send(
-                embed=view_event.build_embed(),
-                view=view_event
-            )
-            view_event.message_id = message.id
-            await interaction.followup.send("See event message!", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"Error: {e}", ephemeral=True)
-    events[interaction.channel.id] = view_event
+        if view_event.message_id is None:
+            try:
+                message = await interaction.channel.send(
+                    embed=view_event.build_embed(),
+                    view=view_event
+                )
+                view_event.message_id = message.id
+            except Exception as e:
+                await interaction.followup.send(f"Error: {e}", ephemeral=True)
+        else:
+            await message.edit(embed=view_event.build_embed(), view=view_event)
+        await interaction.followup.send("See event message: " \
+            f"https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}/{view_event.message_id}", 
+            ephemeral=True)
+        events[interaction.channel.id] = view_event
 
-
-async def add_player(interaction: discord.Interaction, user: discord.Member, team_a: bool = True):
+@tree.command(name="add_player", description="Add player to Team A")
+@app_commands.describe(user="Add player to a team")
+async def add_player(interaction: discord.Interaction, user: discord.Member, team: str = "A"):
     await interaction.response.defer(ephemeral=True)
+    team_a = False
+    if team.uppper() == "A":
+        team_a = True
 
     view = events.get(interaction.channel.id)
     if not view:
@@ -96,18 +102,31 @@ async def add_player(interaction: discord.Interaction, user: discord.Member, tea
         ephemeral=True
     )
 
+@ tree.command(name='clean', description='If event are showing wrong info, use this command to clean the channel and reset the event.')
+async def clean(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    events.clear()
+    await interaction.followup.send("Use /new_event in the same channel the events were running", ephemeral=True)
 
-@tree.command(name="adda", description="Add player to Team A")
-@app_commands.describe(user="User to add")
-async def adda(interaction: discord.Interaction, user: discord.Member):
-    await add_player(interaction, user, team_a=True)
-        
-
-@tree.command(name="addb", description="Add player to Team B")
-@app_commands.describe(user="User to add")
-async def addb(interaction: discord.Interaction, user: discord.Member):
-    await add_player(interaction, user, team_a=False)
-
+@ tree.command(name='history', description='Event list or history details for specific events.')
+async def history(interaction: discord.Interaction, event_id: int = None):
+    await interaction.response.defer(ephemeral=True)
+    if event_id is None:
+        await interaction.followup.send("Full history not available yet.", ephemeral=True)
+        #embed = functions.print_history(interaction)
+    else:
+        event_data = db_event.read_event(interaction.guild.id, interaction.channel.id, event_id)
+        if event_data is None:
+            await interaction.followup.send("Event not found.", ephemeral=True)
+        else:
+            if event_data.victory is not None:
+                view_event = RunningEventView(
+                        interaction=interaction,
+                        event=event_data,
+                    )
+                await interaction.followup.send(embed=view_event.build_embed(), view=view_event, ephemeral=True)
+            else:
+                await interaction.followup.send("Event still active.", ephemeral=True)
 
 @bot.event
 async def on_message(message):
@@ -121,12 +140,18 @@ async def on_message(message):
     if message.channel.id in events:
         await message.delete()
 
-# admin only para fechar evento
-# refazer queries 
-# salvar match rsultados
-# contador de eventos por guild ID?
-# close event ta piscando os botoes apos o click / remover duplo click nos comandos
+# save match muito lento
+# refazer queries (blocar edicao de eventos encerrados)
+# await asyncio.to_thread(data_base.some_function, ...)
+
 # comandos de estatistica 
+# move here
+
+# contador de eventos por guild ID?
+# remove all team A/B e criar eventos individuais
+# to no play 
+# criar novas temporadas 
+# nome/id do event? comandos de resultado? Deletar evento? 
 @bot.event
 async def on_ready():
     await tree.sync()
