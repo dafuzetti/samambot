@@ -11,35 +11,34 @@ client = discord.Client(intents=intents)
 bot = app_commands.CommandTree(client)
 
 
-@ bot.command(name='newevent', description='Create new event. teams: 2-A vs B or 0-Individual. Type: 0-all possible matches')
-async def newevent(ctx):
-    teams: int = 2
-    type: int = 0
+@ bot.command(name='join', description='Join the event.')
+async def join(ctx):
     await ctx.response.defer()
-    event_id = data_base.new_event(ctx, teams, type)
+    event_id = functions.add_players(ctx, False, ctx.user)
     await functions.channelnameopen(ctx.channel, event_id)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='play', description='Join the event.')
-async def play(ctx):
+@ bot.command(name='team-b',
+              description='Add up to 4 players to team B.')
+async def teamb(ctx, p1: discord.User = None,
+                 p2: discord.User = None, p3: discord.User = None,
+                 p4: discord.User = None):
     await ctx.response.defer()
-    functions.add_players(ctx, False, ctx.user)
+    functions.define_team(ctx, 2, p1, p2, p3, p4)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
-
-@ bot.command(name='team',
-              description='Add up to 4 players to a team for the event.')
-async def team(ctx, p1: discord.User = None,
-               p2: discord.User = None, p3: discord.User = None,
-               p4: discord.User = None):
+@ bot.command(name='team-a',
+              description='Add up to 4 players to team A.')
+async def teama(ctx, p1: discord.User = None,
+                 p2: discord.User = None, p3: discord.User = None,
+                 p4: discord.User = None):
     await ctx.response.defer()
-    functions.add_players(ctx, True, p1, p2, p3, p4)
+    functions.define_team(ctx, 1, p1, p2, p3, p4)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
-
 
 @ bot.command(name='players', description='Add up to 8 players to the event.')
 async def players(ctx, p1: discord.User, p2: discord.User = None,
@@ -47,7 +46,8 @@ async def players(ctx, p1: discord.User, p2: discord.User = None,
                   p5: discord.User = None, p6: discord.User = None,
                   p7: discord.User = None, p8: discord.User = None):
     await ctx.response.defer()
-    functions.add_players(ctx, False, p1, p2, p3, p4, p5, p6, p7, p8)
+    event_id = functions.add_players(ctx, False, p1, p2, p3, p4, p5, p6, p7, p8)
+    await functions.channelnameopen(ctx.channel, event_id)
     embed = functions.print_event(ctx)
     await ctx.followup.send(embed=embed, ephemeral=True)
 
@@ -58,6 +58,9 @@ async def event(ctx, action: str = ''):
     event_id = None
     if action.lower() == 'start':
         event_id = functions.start(ctx)
+    elif action.lower() == 'rdm':
+        event_id = functions.add_random_players(ctx)
+        await functions.channelnameopen(ctx.channel, event_id)
     elif action.lower() == 'close':
         event_id = data_base.close_event(ctx)
         await functions.channelnameclose(ctx.channel, event_id)
@@ -69,7 +72,7 @@ async def event(ctx, action: str = ''):
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='movehere', description='Report a match that you lose.')
+@ bot.command(name='movehere', description='Move an event to this channel.')
 async def movehere(ctx, event_id: int):
     await ctx.response.defer()
     name = "_event-" + str(event_id) + "_"
@@ -108,10 +111,10 @@ async def result(ctx, player_win: discord.User,
 
 
 @ bot.command(name='history', description='Event list or history details for specific events.')
-async def history(ctx, event_id: int = None, channel: bool = False):
+async def history(ctx, event_id: int = None):
     await ctx.response.defer()
     if event_id is None:
-        embed = functions.print_history(ctx, channel)
+        embed = functions.print_history(ctx)
     else:
         embed = functions.print_event(ctx, event_id)
     await ctx.followup.send(embed=embed, ephemeral=True)
@@ -134,24 +137,61 @@ async def ids(ctx):
     await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-@ bot.command(name='score', description='All time scoreboard for the channel!')
-async def score(ctx):
+@ bot.command(name='score', description='All time scoreboard for the server!')
+async def score(ctx, player: discord.User = None):
     await ctx.response.defer()
-    list = data_base.read_score(ctx)
     embed = discord.Embed(title="__**Scoreboard:**__", color=0x03f8fc)
+    list = data_base.read_score(ctx, player)
     pos = 0
     for match in list:
         pos = pos + 1
-        embed.add_field(name=f'Rank: {pos}',
+        embed.add_field(name=(f'Rank: {pos}') if len(list) > 1 else '',
                         value=f'Player: {match[4]}\nDraft: {match[0]}/{match[1]} - {match[5]}%\nMatch: {match[2]}/{match[3]} - {match[6]}%', inline=True)
+    if player is not None:
+        list = data_base.read_player_vs(ctx, player)
+        pos = 0
+        for match in list:
+            pos = pos + 1
+            embed.add_field(name=f'Encounters: {match[3]}',
+                            value=f'VS: {match[0]}\nDraft: {match[2]}/{match[3]} - {round(match[2]/match[3]*100, 2)}%\nMatch: {match[1]}/{match[3]} - {round(match[1]/match[3]*100, 2)}%', inline=True)
     await ctx.followup.send(embed=embed, ephemeral=True)
+
+
+@ bot.command(name='help', description='Show available commands.')
+async def help(ctx, lang: str = 'EN'):
+    await ctx.response.defer()
+
+    lang = lang.strip().upper()
+    lang_map = {'EN': 0, 'PT': 1}
+    index = lang_map.get(lang)
+    if index is None:
+        await ctx.followup.send("Invalid language. Use `EN` or `PT`.", ephemeral=True)
+        return
+
+    try:
+        with open('HELP_TEXT.md', 'r', encoding='utf-8') as f:
+            content = f.read().strip().split('\n---\n')
+    except Exception as e:
+        await ctx.followup.send(f"Could not load help text: {e}", ephemeral=True)
+        return
+
+    if index >= len(content):
+        await ctx.followup.send("Help text not available for the requested language.", ephemeral=True)
+        return
+
+    section = content[index]
+
+    max_len = 1900
+    parts = [section[i:i+max_len] for i in range(0, len(section), max_len)]
+    for part in parts:
+        await ctx.followup.send(f"```md\n{part}\n```", ephemeral=True)
 
 
 @ client.event
 async def on_ready():
     await client.change_presence()
     await bot.sync()
-    print('Running')
+    print('Ready!')
 
 
 client.run(my_secret)

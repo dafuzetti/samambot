@@ -12,12 +12,33 @@ SQL_UPDATE_MOVEEVENT = """UPDATE event SET channel = %s WHERE id = %s AND guild 
 SQL_INSERT_TEAMS = """INSERT INTO teams(event, player, team)
             VALUES(%s, %s, %s);"""
 SQL_DELETE_TEAMS = """DELETE FROM teams WHERE event = '%s';"""
+SQL_DELETE_TEAM = """DELETE FROM teams WHERE event = '%s' AND team = %s;"""
 SQL_DELETE_PLAYER = """DELETE FROM teams WHERE event = '%s' AND PLAYER = %s;"""
 SQL_INSERT_MATCH = """INSERT INTO match(event, player, opponent)
             SELECT %s, %s, %s WHERE NOT EXISTS (SELECT id FROM
             match WHERE event = %s AND player = %s and opponent = %s);"""
 SQL_UPDATE_MATCH = """UPDATE match SET win = %s, lose = %s 
             WHERE event = %s AND player = %s AND opponent = %s;"""
+SQL_PLAYER_VS = """SELECT
+                    TE.PLAYER,
+                    SUM(WIN) AS MA_WIN,
+                    (SELECT COUNT(1) FROM EVENT, TEAMS T1 
+                        WHERE 
+                            EVENT.ID = T1.EVENT
+                        AND T1.TEAM = VICTORY
+                        AND T1.PLAYER = %s
+	 	                AND EVENT.GUILD = '%s'
+                        AND T1.EVENT = (SELECT EVENT FROM TEAMS T2 WHERE T2.EVENT = T1.EVENT AND T2.TEAM != T1.TEAM AND T2.PLAYER = TE.PLAYER)) AS EV_WIN,
+                    COUNT(TE.PLAYER) GAMES
+                FROM
+                    (
+                    SELECT PLAYER, CASE WHEN LOSE=2 THEN 1 ELSE 0 END as WIN FROM MATCH, EVENT WHERE OPPONENT = %s AND MATCH.EVENT = EVENT.ID AND EVENT.GUILD = '%s' 
+                    union all 
+                    SELECT OPPONENT, CASE WHEN WIN=2 THEN 1 ELSE 0 END as WIN FROM MATCH, EVENT WHERE PLAYER = %s AND MATCH.EVENT = EVENT.ID AND EVENT.GUILD = '%s' 
+                    ) AS TE 
+                GROUP BY PLAYER
+                ORDER BY GAMES DESC
+                LIMIT 10"""
 SQL_TEAM_FORMATION = """UPDATE
                             TEAMS
                         SET
@@ -82,7 +103,26 @@ async def send_file(ctx):
         await target_channel.send(file=file_data)
 
 
-def read_score(ctx):
+def read_player_vs(ctx, player = None):
+    conn = None
+    rows = None
+    if player is not None:
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(SQL_PLAYER_VS, (player.mention, ctx.guild_id, player.mention, ctx.guild_id, player.mention, ctx.guild_id,))
+            rows = cur.fetchall()
+            conn.commit()
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+        finally:
+            if conn is not None:
+                conn.close()
+        return rows
+
+
+def read_score(ctx, player = None):
     conn = None
     rows = None
     try:
@@ -95,20 +135,20 @@ def read_score(ctx):
                     win,
                     matches,
                     player,
-                    (victory * 100/champs) event_stat,
-                    (win * 100/matches) match_stat
+                    ROUND((victory::numeric * 100)/ champs::numeric, 2) event_stat,
+                    ROUND((win::numeric * 100)/ matches::numeric, 2) match_stat
                 FROM
                 (SELECT
                     te.player,
                     COALESCE(SUM(1) filter (where ev.victory = te.team), 0) as victory,
                     count(te.team) as champs,
                     (
-                    (SELECT COUNT(ma.id) from MATCH as ma WHERE te.player = ma.player AND ma.win = 2)
+                    (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s'AND te.player = ma.player AND ma.win = 2)
                         +
-                    (SELECT COUNT(ma.id) from MATCH as ma WHERE te.player = ma.opponent AND ma.lose = 2)
+                    (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s' AND te.player = ma.opponent AND ma.lose = 2)
                     ) win,
-                    (SELECT COUNT(ma.id) from MATCH as ma WHERE te.player = ma.player OR  ma.opponent = te.player) matches,
-                    CEIL((SELECT MAX(CT) FROM (SELECT COUNT(event) AS CT from teams group by player))/10.0) as treshhold
+                    (SELECT COUNT(ma.id) from MATCH as ma, EVENT evv WHERE ma.EVENT = evv.ID AND evv.GUILD = '%s' AND (te.player = ma.player OR  ma.opponent = te.player)) matches,
+                    CEIL((SELECT MAX(CT) FROM (SELECT COUNT(event) AS CT from teams, event evv where teams.EVENT = evv.ID AND evv.GUILD = '%s' group by player))/10.0) as treshhold
                 FROM 
                     teams as te,
                     event as ev
@@ -116,12 +156,13 @@ def read_score(ctx):
                     ev.id = te.event
                 AND ev.victory IS NOT NULL
                 AND ev.guild = '%s'
+                AND (%s OR te.player = %s)
                 GROUP BY te.player)
                 WHERE
-                champs >= treshhold
+                (%s OR champs >= treshhold)
                 ORDER BY event_stat DESC, match_stat DESC, champs DESC, matches DESC, player DESC
                 LIMIT 20
-                """, (ctx.guild_id,))
+                """, (ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, ctx.guild_id, (True if player is None else False), (None if player is None else player.mention), (True if player is not None else False),))
         rows = cur.fetchall()
         conn.commit()
         cur.close()
@@ -213,7 +254,7 @@ def read_event(ctx, event_id):
     return row
 
 
-def find_event(ctx):
+def find_event(ctx, create: bool = False):
     event_id = None
     conn = None
     row = None
@@ -225,6 +266,10 @@ def find_event(ctx):
         row = cur.fetchone()
         if row is not None:
             event_id = row[0]
+        else:
+            if create:
+                event_id = new_event(ctx)
+                conn.commit()
         cur.close()
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
@@ -236,7 +281,7 @@ def find_event(ctx):
 
 def new_player(ctx, player_list, same_team=False):
     conn = None
-    event_id = find_event(ctx)
+    event_id = find_event(ctx, True)
     team = None
     if event_id is not None:
         try:
@@ -258,6 +303,31 @@ def new_player(ctx, player_list, same_team=False):
                         team = row[0]
                     cur.execute(SQL_INSERT_TEAMS,
                                 (event_id, player.mention, team,))
+            conn.commit()
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+        finally:
+            if conn is not None:
+                conn.close()
+    return event_id
+
+
+def new_team(ctx, player_list, team_id):
+    conn = None
+    event_id = find_event(ctx)
+    if event_id is not None:
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(SQL_DELETE_TEAM,
+                        (event_id, team_id,))
+            for player in player_list:
+                if player is not None:
+                    cur.execute(SQL_DELETE_PLAYER,
+                                (event_id, player.mention,))
+                    cur.execute(SQL_INSERT_TEAMS,
+                                (event_id, player.mention, team_id,))
             conn.commit()
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -478,6 +548,25 @@ def player_history(ctx):
         if conn is not None:
             conn.close()
     return rows
+
+
+def get_random_past_players(ctx, num=4):
+    conn = None
+    rows = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT DISTINCT player FROM teams WHERE event IN (SELECT id FROM event WHERE guild = '%s' AND victory IS NOT NULL) LIMIT %s""", (ctx.guild_id, num))
+        rows = cur.fetchall()
+        conn.commit()
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+    return [row[0] for row in rows] if rows else []
 
 
 def read_matches(ctx, event=None):
