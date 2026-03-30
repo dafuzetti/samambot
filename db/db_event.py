@@ -1,8 +1,7 @@
-import pandas
 import psycopg2
-from urllib.parse import urlparse
+import db.db_conn as db
+import db.sql_match as sql_match
 from datetime import date
-from decouple import config
 from classes.Matches import Matches
 from classes.Players import Players
 from classes.Event import Event
@@ -16,37 +15,11 @@ SQL_INSERT_TEAMS = """INSERT INTO teams(event, player, team)
 SQL_INSERT_MATCH = """INSERT INTO match(event, player, opponent)
             SELECT %s, %s, %s WHERE NOT EXISTS (SELECT id FROM
             match WHERE event = %s AND player = %s and opponent = %s);"""
-SQL_UPDATE_MATCH = """UPDATE match SET win = %s, lose = %s 
-            WHERE event = %s AND player = %s AND opponent = %s AND (select victory from event where id=match.event) is NULL;"""
-
-env = config("ENV")
-db_key = config("DB_KEY")
-
-
-def get_conn():
-    database_url = 'postgres://postgres:' + db_key + \
-        '@roundhouse.proxy.rlwy.net:13681/railway'
-    if env == "TES":
-        database_url = 'postgres://postgres:' + db_key + \
-            '@roundhouse.proxy.rlwy.net:13681/railway'
-    elif env == "PRO":
-        database_url = 'postgres://postgres:' + db_key + \
-            '@viaduct.proxy.rlwy.net:29301/railway'
-    url = urlparse(database_url)
-    connection = psycopg2.connect(
-        database=url.path[1:],
-        user=url.username,
-        password=url.password,
-        host=url.hostname,
-        port=url.port
-    )
-    return connection
-
 
 def move_event(ctx_guild, ctx_channel, event_id) -> Event:
     conn = None
     try:
-        conn = get_conn()
+        conn = db.get_connection()
         cur = conn.cursor()
         cur.execute(SQL_UPDATE_MOVEEVENT, (ctx_channel, event_id, ctx_guild))
         conn.commit()
@@ -64,7 +37,7 @@ def read_event(ctx_guild, ctx_channel, event_id) -> Event:
     conn = None
     row = None
     try:
-        conn = get_conn()
+        conn = db.get_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, teams, victory FROM event WHERE  guild = '%s' AND id = '%s'",
                     (ctx_guild, event_id))
@@ -85,7 +58,7 @@ def find_event(ctx_guild, ctx_channel) -> Event:
     conn = None
     row = None
     try:
-        conn = get_conn()
+        conn = db.get_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, teams, victory FROM " \
                     " event WHERE guild = '%s' AND channel = '%s' AND victory IS NULL ORDER by id",
@@ -103,19 +76,13 @@ def find_event(ctx_guild, ctx_channel) -> Event:
     return event_data
 
 
-def update_matches(ctx_guild, ctx_channel, event_id, player_w, player_l, lose) -> Event:
+def update_matches(ctx_guild, ctx_channel, event_id, player, opponent, win, lose) -> Event:
     conn = None
     if event_id is not None:
         try:
-            conn = get_conn()
-            cur = conn.cursor()
-            updates = cur.execute(
-                SQL_UPDATE_MATCH, (2, lose, event_id, player_w, player_l,))
-            if updates is None:
-                cur.execute(SQL_UPDATE_MATCH,
-                            (lose, 2, event_id, player_l, player_w,))
-            conn.commit()
-            cur.close()
+            conn = db.get_connection()
+            sql_match.Sql_Match.update_match(conn, win, lose, event_id, player, opponent)
+            conn.close()
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
         finally:
@@ -129,7 +96,7 @@ def read_matches(event=None) -> Matches:
     rows = None
 
     try:
-        conn = get_conn()
+        conn = db.get_connection()
         cur = conn.cursor()
 
         cur.execute(
@@ -162,7 +129,7 @@ def close_event(ctx_guild, ctx_channel, event_id) -> Event:
     conn = None
 
     try:
-        conn = get_conn()
+        conn = db.get_connection()
         cur = conn.cursor()
         cur.execute(
             """SELECT
@@ -248,7 +215,7 @@ def new_event(ctx_guild, ctx_channel, teams: int = 2, type: int = 0):
     event_date = date.today().strftime("%Y%m%d")
 
     try:
-        conn = get_conn()
+        conn = db.get_connection()
         cur = conn.cursor()
 
         cur.execute(
@@ -284,7 +251,7 @@ def new_team(ctx_guild, ctx_channel, event_id, player_list, team_A: bool = True)
         team_id = 2
     if event_id is not None:
         try:
-            conn = get_conn()
+            conn = db.get_connection()
             cur = conn.cursor()
             for player in player_list:
                 if player is not None:
@@ -304,7 +271,7 @@ def save_matches(ctx_guild, ctx_channel, event, list):
     conn = None
     if event_id is not None:
         try:
-            conn = get_conn()
+            conn = db.get_connection()
             cur = conn.cursor()
             for match in list:
                 bind_vars = (event_id, match[0], match[1], event_id, match[0], match[1],)

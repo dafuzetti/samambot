@@ -1,5 +1,6 @@
+import asyncio
+
 import discord
-import itertools
 import db.db_event as db_event
 import re
 
@@ -14,31 +15,26 @@ def define_team(ctx_guild, ctx_channel, team_id: int, p1: discord.User, p2: disc
     list.append(p4)
     db_event.new_team(ctx_guild, ctx_channel, list, team_id)
 
-async def channelnameopen(channel, event_id):
-    name = channel.name
-    newname = name
-    if newname.endswith('__'):
-        parts = newname.rsplit("__", 1)
-        newname = ('_event-' + str(event_id) + '_').join(parts)
-    if newname != name:
-        try:
-            await channel.edit(name=newname)
-        except discord:
-            return
+def channelnameopen(channel, event_id):
+    if '-_' in channel.name:
+        base = get_base_channel_name(channel)
+        newname = f"{base}-_{event_id}_"
+    update_channelname(channel, newname)
 
+def channelnameclose(channel):
+    if '-_' in channel.name:
+        base = get_base_channel_name(channel)
+        newname = f"{base}-__"
+    update_channelname(channel, newname)
 
-async def channelnameclose(channel, event_id = None):
-    name = channel.name
-    newname = name
-    pattern = re.compile(r'_event-(\d+)_')
-    if bool(pattern.search(newname)):
-        newname = newname.rsplit("_", 2)[0] + '__'
-    if newname != name:
-        try:
-            await channel.edit(name=newname)
-        except discord:
-            return
+def get_base_channel_name(channel):
+    if '-_' in channel.name:
+        return channel.name.rsplit('-_', 1)[0]
+    return channel.name
 
+def update_channelname(channel, name):
+    if channel.name != name:
+        asyncio.create_task(channel.edit(name=name))
 
 def resultado(ctx_guild, ctx_channel, player_w, player_l, losses):
     db_event.update_matches(ctx_guild, ctx_channel, player_w, player_l, losses)
