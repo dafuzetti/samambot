@@ -18,6 +18,12 @@ class Players:
         for p in players:
             self.df.loc[len(self.df)] = [p, team]
 
+    def add_teams(self, playersA, playersB):
+        for p in playersA:
+            self.df.loc[len(self.df)] = [p, 1]
+        for p in playersB:
+            self.df.loc[len(self.df)] = [p, 2]
+
     def set_players(self, players: pd.DataFrame):
         self.df = players
 

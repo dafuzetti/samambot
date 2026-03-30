@@ -1,4 +1,4 @@
-from asyncio import events
+import asyncio
 import math
 
 import discord
@@ -8,13 +8,13 @@ import db.db_event as db_event
 import functions
 from classes.Matches import Matches
 from classes.Event import Event
+from classes.State import State
 
 class RunningEventView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction, event: Event, events = None):
+    def __init__(self, interaction: discord.Interaction, event: Event):
         super().__init__(timeout=None)
-        self.message_id = None
+        self.message = None
         self.processing_player = None  # Flag to prevent multiple simultaneous actions
-        self.events = events
         self.event = event
         self.guild_id = interaction.guild.id
         self.channel_id = interaction.channel.id
@@ -76,33 +76,22 @@ class RunningEventView(discord.ui.View):
         self.selected_result = interaction.data['values'][0]
 
     async def save_callback(self, interaction: discord.Interaction):
-        if await self.event_closing(interaction):
+        processing, msg = await self.is_processing()
+        if processing:
+            await interaction.response.send_message(msg, ephemeral=True)
             return
-        
         await interaction.response.defer()
-        await functions.channelnameopen(interaction.channel, self.event.event_id)
+
         if self.selected_match_index is None or self.selected_result is None:
-            await interaction.response.send_message(
-                "You must select a match AND a result!", ephemeral=True
-            )
             return
 
         row = self.event.matches.get_match(self.selected_match_index)
         a_wins, b_wins = map(int, self.selected_result.split("x"))
-        player_a = row[Matches.COL_PLAYER_A]
-        player_b = row[Matches.COL_PLAYER_B]
-        if a_wins > b_wins:
-            winner = player_a
-            loser = player_b
-            loser_wins = b_wins
-        elif b_wins > a_wins:
-            winner = player_b
-            loser = player_a
-            loser_wins = a_wins
-            
-        self.event = db_event.update_matches(self.event.guild_id, self.event.channel_id, self.event.event_id, winner, loser, loser_wins)
+        self.event = db_event.update_matches(self.event.guild_id, self.event.channel_id, self.event.event_id, 
+                                             row[Matches.COL_PLAYER_A], row[Matches.COL_PLAYER_B], a_wins, b_wins)
 
         await self.update_message(interaction)
+        functions.channelnameopen(interaction.channel, self.event.event_id)
 
     def build_embed(self):
         if self.event.victory is not None:
@@ -110,56 +99,14 @@ class RunningEventView(discord.ui.View):
         embed = self.print_event_started(self.event)
         return embed
 
-    async def event_closing(self, interaction: discord.Interaction) -> bool:
-        if self.processing_player is not None:
-            await interaction.response.send_message(
-                f"⏳ Event is already being closed by: {self.processing_player}", ephemeral=True
-            )
-            return True
-        else:
-            return False
+    async def is_processing(self):
+        if self.processing_player:
+            return True, f"⏳ Event is already starting by: {self.processing_player}"
+        return False, None
 
     async def update_message(self, interaction: discord.Interaction):
-        msg_id = self.message_id
-
-        if msg_id is None:
-            return
-        channel = interaction.channel
-        message = await channel.fetch_message(msg_id)
-        await message.edit(embed=self.build_embed(), view=self)
-
-    @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")
-    async def close_event(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if await self.event_closing(interaction):
-            return
-        
-        role = discord.utils.get(interaction.guild.roles, name="Samambot Admin")
-        if role in interaction.user.roles:
-            self.processing_player = interaction.user.mention
-            confirm_view = ConfirmCloseView(interaction)
-            await interaction.response.send_message(
-                "Are you sure you want to close the event?", view=confirm_view, ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                "Only users with 'Samambot Admin' role can close events", ephemeral=True
-            )
-
-        # Wait until the user clicks Yes/No
-        await confirm_view.wait()
-
-        if not confirm_view.confirmed:
-            # User canceled
-            self.processing_player = None
-            await interaction.followup.send("Event close canceled.", ephemeral=True)
-            return
-
-        await self.update_message(interaction)
-        self.events.pop(interaction.channel.id, None)
-        self.event = db_event.close_event(self.guild_id, self.channel_id, self.event.event_id)
-        await self.update_message(interaction)
-        await functions.channelnameclose(interaction.channel, self.event.event_id)
-        await interaction.edit_original_response(content="Event closing", view=None)
+        if self.message is not None:
+            await self.message.edit(embed=self.build_embed(), view=self)
 
 
     def print_event_started(self, event_obj: Event):
@@ -219,6 +166,41 @@ class RunningEventView(discord.ui.View):
                         value=matches, inline=False)
         return embed
 
+    @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")
+    async def close_event(self, interaction: discord.Interaction, button: discord.ui.Button):
+        processing, msg = await self.is_processing()
+        if processing:
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+
+        role = discord.utils.get(interaction.guild.roles, name="Samambot Admin")
+        if role in interaction.user.roles:
+            self.processing_player = interaction.user.mention
+            confirm_view = ConfirmCloseView(interaction)
+            await interaction.response.send_message(
+                "Are you sure you want to close the event?", view=confirm_view, ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "Only users with 'Samambot Admin' role can close events", ephemeral=True
+            )
+
+        # Wait until the user clicks Yes/No
+        await confirm_view.wait()
+
+        if not confirm_view.confirmed:
+            # User canceled
+            self.processing_player = None
+            await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
+            return
+
+        await self.update_message(interaction)
+        State.remove_event(interaction.channel.id)
+        self.event = db_event.close_event(self.guild_id, self.channel_id, self.event.event_id)
+        await self.update_message(interaction)
+        functions.channelnameclose(interaction.channel)
+        await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
+
 
 class ConfirmCloseView(discord.ui.View):
     def __init__(self, interaction: discord.Interaction = None):
@@ -237,14 +219,14 @@ class ConfirmCloseView(discord.ui.View):
         self.add_item(no_button)
 
     async def yes_callback(self, interaction: discord.Interaction):
-        self.confirmed = True
         await interaction.response.defer()
+        self.confirmed = True
         # Update the confirmation message to "Event closed"
         if self.confirmation_interaction:
-            await self.confirmation_interaction.edit_original_response(content="Event closing", view=None)
+            await self.confirmation_interaction.edit_original_response(content="⏳ Event closing...", view=None)
         self.stop()  # stop the view to end interaction
 
     async def no_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         self.confirmed = False
         self.stop()  # stop the view to end interaction
-        await interaction.response.defer()
