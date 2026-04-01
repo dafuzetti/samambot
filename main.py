@@ -156,9 +156,7 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
-         
-# get result option not very good
-
+# adicionar opcao - remover resultado
 # refazer queries (blocar edicao de eventos encerrados)
 # match using player objc, return team from players at query
 # mover print para dentro das classes

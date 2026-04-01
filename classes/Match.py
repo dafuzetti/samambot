@@ -9,8 +9,10 @@ class Match:
     def __init__(self, id: int, player_a: str, player_b: str, wins_a: int = 0 , wins_b: int = 0):
         self.id = id
         self.player_a = player_a
+        self.player_a_name = player_a
         self.wins_a = wins_a
         self.player_b = player_b
+        self.player_b_name = player_b
         self.wins_b = wins_b
 
     def set_result(self, wins_a, wins_b):
@@ -35,6 +37,21 @@ class Match:
     def set_losses(self, losses):
         self.wins_b = losses
 
+    def set_names(self, player_a_name, player_b_name):
+        self.player_a_name = player_a_name
+        self.player_b_name = player_b_name
+
+    def get_vs_label(self, player_tag):
+        if self.wins_a == 0 and self.wins_b == 0:
+            if player_tag == self.player_a:
+                    return f"{self.player_b_name}"
+            elif player_tag == self.player_b:
+                    return f"{self.player_a_name}"
+            else:
+                return f"{self.player_a_name} vs {self.player_b_name}"
+        else:
+            return f"{self.player_a_name} {self.wins_a}-{self.wins_b} {self.player_b_name}"
+    
     def get_id(self):
         return self.id
 

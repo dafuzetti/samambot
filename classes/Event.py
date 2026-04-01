@@ -45,7 +45,7 @@ class Event:
             return None
         return self.matches.get_match(match_id)
 
-    def get_matches(self):
+    def get_matches(self, player_tag=None):
         if self.matches is None:
             return []
-        return self.matches.get_matches()
+        return self.matches.get_matches(player_tag)
