@@ -1,15 +1,9 @@
-from asyncio import events
-import asyncio
-
 import discord
-import discord.ui
-import pandas as pd
+import functions
+import db.db_event as db_event
 
 from views.RunningEventView import RunningEventView
-from classes.Event import Event
 from classes.Players import Players
-import db.db_event as db_event
-import functions
 from classes.State import State
 
 class CreatingEventView(discord.ui.View):
@@ -48,7 +42,7 @@ class CreatingEventView(discord.ui.View):
 
         return embed
 
-    async def update_message(self, interaction: discord.Interaction, clean_btns: bool = False):
+    async def update_message(self, clean_btns: bool = False):
         if clean_btns:
             self.clear_items()
         else:
@@ -62,7 +56,8 @@ class CreatingEventView(discord.ui.View):
                 if item.custom_id == "team_b":
                     item.label = f"Join Team B ({len(self.team_b)})"
 
-        await interaction.message.edit(embed=self.build_embed(), view=self)
+        if self.message is not None:
+            await self.message.edit(embed=self.build_embed(), view=self)
     
     async def is_processing(self):
         if self.processing_player:
@@ -79,7 +74,7 @@ class CreatingEventView(discord.ui.View):
 
         self.add_player(interaction.user)
 
-        await self.update_message(interaction)
+        await self.update_message()
 
     @discord.ui.button(label="Join Team B (0)", style=discord.ButtonStyle.blurple, custom_id="team_b")
     async def join_b(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -103,7 +98,7 @@ class CreatingEventView(discord.ui.View):
 
         self.add_player(interaction.user, team_a=False)
 
-        await self.update_message(interaction)
+        await self.update_message()
 
     @discord.ui.button(label="Drop", style=discord.ButtonStyle.danger, custom_id="drop")
     async def drop(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -116,7 +111,7 @@ class CreatingEventView(discord.ui.View):
         self.team_a.discard(interaction.user.mention)
         self.team_b.discard(interaction.user.mention)
 
-        await self.update_message(interaction)
+        await self.update_message()
 
     @discord.ui.button(label="Start Event", style=discord.ButtonStyle.red, custom_id="start", disabled=True)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -130,12 +125,12 @@ class CreatingEventView(discord.ui.View):
             self.processing_player = interaction.user.mention
             print_msg = "⏳ Event starting..."
             start = True
-            
+
         #instead of deferring, send an immediate response
         await interaction.response.send_message(print_msg, ephemeral=True)
 
         if start:
-            await self.update_message(interaction, clean_btns=True) 
+            await self.update_message(clean_btns=True) 
             players = Players()
             players.add_teams(self.team_a, self.team_b)
             new_view = RunningEventView(

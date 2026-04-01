@@ -17,8 +17,11 @@ class Event:
     def refresh(self):
         self.load()
 
-    def get_iterrows(self):
-        return self.matches.get_iterrows()
+    def get_id(self):
+        return self.event_id
+
+    def get_victory(self):
+        return self.victory 
 
     def __repr__(self):
         return f"<Event id={self.channel_id}>"
@@ -31,3 +34,18 @@ class Event:
     
     def get_channel_tag(self):
         return f"<#{self.channel_id}>"
+    
+    def set_match_by_winner(self, winner_tag, loser_tag, game_loss):
+        if self.matches is None:
+            return None
+        return self.matches.set_match_by_winner(winner_tag, loser_tag, game_loss)
+    
+    def get_match(self, match_id):
+        if self.matches is None:
+            return None
+        return self.matches.get_match(match_id)
+
+    def get_matches(self):
+        if self.matches is None:
+            return []
+        return self.matches.get_matches()

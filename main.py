@@ -1,5 +1,4 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 from decouple import config
 
@@ -19,23 +18,27 @@ tree = bot.tree
 
 async def create_event(interaction: discord.Interaction):
     view_event = State.get_eventView(interaction.channel.id)
-    new_event = "Event found and loaded."
+    msg = "Event found and loaded."
     if view_event is None:
         try:
             event_data = db_event.find_event(interaction.guild.id, interaction.channel.id)
             if event_data is not None:
-                view_event = RunningEventView(interaction=interaction, event=event_data,)
+                view_event = RunningEventView(interaction=interaction, event=event_data)
             else:
-                new_event = "Event created."
+                msg = "Event created."
                 view_event = CreatingEventView()
                 functions.channelnameopen(interaction.channel, "NEW")
         except Exception as e:
             print(f"Error creating event: {e}")
         State.set_eventView(interaction.channel.id, view_event)
-    return new_event
+    return msg, view_event
 
-async def event_message(interaction: discord.Interaction):
-    view_event = State.get_eventView(interaction.channel.id)
+async def event_message(interaction: discord.Interaction, view=None):
+    if view is not None:
+        view_event = view
+    else:
+        view_event = State.get_eventView(interaction.channel.id)
+    
     if view_event is None:
         return None
 
@@ -50,6 +53,19 @@ async def event_message(interaction: discord.Interaction):
     
     return f"See event message: https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}/{view_event.message.id}"
 
+async def save_result(interaction: discord.Interaction, winner: discord.User, loser: discord.User, gameloss: int = 0):
+    view_event = State.get_eventView(interaction.channel.id)
+    msg, event_data = db_event.update_matches_from_channel(interaction.guild.id, interaction.channel.id, winner.mention, loser.mention, gameloss) 
+
+    if event_data is not None:
+        if isinstance(view_event, RunningEventView):
+            view_event.event.set_matches(event_data.matches)
+        else:
+            view_event = RunningEventView(interaction=interaction, event=event_data)
+            State.set_eventView(interaction.channel.id, view_event)
+    msg = return_message(msg, await event_message(interaction, view_event))
+    return msg
+
 def return_message(base_msg: str="", followup_msg=None):
     if followup_msg:
         return f"{base_msg}\n{followup_msg}"
@@ -61,11 +77,43 @@ async def clean(interaction: discord.Interaction):
     State.clear_events()
     await interaction.followup.send("Use /new_event in the same channel the events were running", ephemeral=True)
 
-@tree.command(name="new_event", description="Start an event")
-async def new_event(interaction: discord.Interaction):
+@tree.command(name="event", description="Start an event")
+async def event(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
-    msg = await create_event(interaction)
-    await interaction.followup.send(return_message(msg, await event_message(interaction)), ephemeral=True)
+    msg, view = await create_event(interaction)
+    await interaction.followup.send(return_message(msg, await event_message(interaction, view)), ephemeral=True)
+
+@tree.command(name="add_player", description="Add player to an event.")
+async def add_player(interaction: discord.Interaction, user: discord.Member, team: str = "A"):
+    msg = ""
+    await interaction.response.defer(ephemeral=True)
+    team_a = team.upper() == "A"
+    view_event = State.get_eventView(interaction.channel.id)
+    if view_event is not None:
+        if isinstance(view_event, CreatingEventView):
+            view_event.add_player(user, team_a=team_a)
+            await view_event.update_message()
+            msg = return_message(f"{user.mention} added to event.", await event_message(interaction, view_event))
+        else:
+            msg = "Event already started. Can't add players."
+    else:
+        msg = "No event found. Use /event to create a new event."
+    await interaction.followup.send(msg, ephemeral=True)
+
+@tree.command(name='win', description='Report the result of a match.')
+async def win(interaction: discord.Interaction, loser: discord.User, gameloss: int = 0):
+    await interaction.response.defer(ephemeral=True) 
+    await interaction.followup.send(await save_result(interaction, interaction.user, loser, gameloss), ephemeral=True)
+
+@tree.command(name='lose', description='Report the result of a match.')
+async def lose(interaction: discord.Interaction, winner: discord.User, gameloss: int = 0):
+    await interaction.response.defer(ephemeral=True) 
+    await interaction.followup.send(await save_result(interaction, winner, interaction.user, gameloss), ephemeral=True)
+
+@tree.command(name='result', description='Report the result of a match.')
+async def result(interaction: discord.Interaction, winner: discord.User, loser: discord.User, gameloss: int = 0):
+    await interaction.response.defer(ephemeral=True) 
+    await interaction.followup.send(await save_result(interaction, winner, loser, gameloss), ephemeral=True)
 
 @ tree.command(name='history', description='Event list or history details for specific events.')
 async def history(interaction: discord.Interaction, event_id: int = None):
@@ -108,10 +156,14 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
+         
+# get result option not very good
 
 # refazer queries (blocar edicao de eventos encerrados)
-# add player cagado, evento rodando precisa validar 
-# add comandos win/lose/result 
+# match using player objc, return team from players at query
+# mover print para dentro das classes
+# remover classes.propriety access
+# remover teams a and b from creatingevent and add a list of players 
 
 # comandos de estatistica 
 # move here
