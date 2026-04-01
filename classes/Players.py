@@ -1,60 +1,58 @@
-import pandas as pd
+from classes.Player import Player
 
 class Players:
-    PLAYER = 'player'
-    TEAM = 'team'
-    PLAYER_COLUMNS = [PLAYER, TEAM]
 
-    def __init__(self, data=None):
-        self.df = pd.DataFrame(data or [], columns=self.PLAYER_COLUMNS)
+    def __init__(self, rows=None):        
+        self.players = [
+            Player(r[0], r[1])
+            for r in rows or []
+        ]
 
     def get_team(self, team):
-        return self.df[self.df[self.TEAM] == team][self.PLAYER].tolist()
+        return [p for p in self.players if p.team == team]
 
+    def get_team_tags(self, team):
+        return [p.get_mention() for p in self.players if p.team == team]
+    
     def add_player(self, player, team):
-        self.df = self.df.append({self.PLAYER: player, self.TEAM: team}, ignore_index=True)
+        self.players.append(Player(player, team))
 
     def add_players(self, players, team):
         for p in players:
-            self.df.loc[len(self.df)] = [p, team]
+            self.players.append(Player(p, team))
 
     def add_teams(self, playersA, playersB):
         for p in playersA:
-            self.df.loc[len(self.df)] = [p, 1]
+            self.players.append(Player(p, 1))
         for p in playersB:
-            self.df.loc[len(self.df)] = [p, 2]
-
-    def set_players(self, players: pd.DataFrame):
-        self.df = players
+            self.players.append(Player(p, 2))
 
     def len(self):
-        return len(self.df)
-
-    def to_list(self):
-        return self.df.values.tolist()
+        return len(self.players)
 
     def __repr__(self):
-        return repr(self.df)
+        return repr(self.players)
     
-    def generate_matches(self):
+    def generate_pairings(self):
+        teams = {}
+
+        # group players by team
+        for p in self.players:
+            teams.setdefault(p.team, []).append(p)
+
         matches = []
 
-        teams = self.df.groupby(self.TEAM)
+        team_list = list(teams.values())
 
-        team_dict = {
-            team: group['player'].tolist()
-            for team, group in teams
-        }
+        # all team pairs
+        for i in range(len(team_list)):
+            for j in range(i + 1, len(team_list)):
+                team_a = team_list[i]
+                team_b = team_list[j]
 
-        team_ids = list(team_dict.keys())
-
-        for i in range(len(team_ids)):
-            for j in range(i + 1, len(team_ids)):
-                team_a = team_dict[team_ids[i]]
-                team_b = team_dict[team_ids[j]]
-
+                # all player vs player
                 for p1 in team_a:
                     for p2 in team_b:
-                        matches.append([p1, p2])
+                        matches.append((p1.get_mention(), p2.get_mention()))
 
         return matches

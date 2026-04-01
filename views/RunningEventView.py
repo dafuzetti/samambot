@@ -1,12 +1,9 @@
-import asyncio
 import math
-
 import discord
-import discord.ui
-import pandas as pd
 import db.db_event as db_event
 import functions
-from classes.Matches import Matches
+
+from classes.Match import Match
 from classes.Event import Event
 from classes.State import State
 
@@ -19,15 +16,19 @@ class RunningEventView(discord.ui.View):
         self.guild_id = interaction.guild.id
         self.channel_id = interaction.channel.id
 
-        self.selected_match_index = None
-        self.selected_result = None
-
+        self.user_selections = {}  # Dictionary to store selections per user
+        
         match_options = []
-        for idx, row in self.event.matches.get_iterrows():
-            player_a = self.get_member_name(interaction, row[Matches.COL_PLAYER_A])
-            player_b = self.get_member_name(interaction, row[Matches.COL_PLAYER_B])
-            label = f"{player_a} vs {player_b}"
-            match_options.append(discord.SelectOption(label=label, value=str(idx)))
+        for m in self.event.get_matches():
+            if isinstance(m, Match):
+                match: Match = m
+                match_string = f"{self.get_member_name(interaction, match.player_a)} vs {self.get_member_name(interaction, match.player_b)}"
+                match_options.append(discord.SelectOption(label=match_string, value=str(match.get_id())))
+
+        result_options = [
+            discord.SelectOption(label=r, value=r)
+            for r in Match.RESULTS
+        ]
 
         self.match_select = discord.ui.Select(
             placeholder="Select a match",
@@ -37,13 +38,6 @@ class RunningEventView(discord.ui.View):
         self.match_select.callback = self.match_select_callback
         self.add_item(self.match_select)
 
-        # Dropdown 2: select result
-        result_options = [
-            discord.SelectOption(label="2×0", value="2x0"),
-            discord.SelectOption(label="2×1", value="2x1"),
-            discord.SelectOption(label="1×2", value="1x2"),
-            discord.SelectOption(label="0×2", value="0x2"),
-        ]
         self.result_select = discord.ui.Select(
             placeholder="Select result",
             options=result_options,
@@ -60,20 +54,20 @@ class RunningEventView(discord.ui.View):
         )
         self.save_button.callback = self.save_callback
         self.add_item(self.save_button)
-
-    def get_member_name(self, interaction: discord.Interaction, user_id: str):
-        member = interaction.guild.get_member(int(user_id.replace("<@", "").replace(">", "")))
-        if member:
-            return member  # or use member.mention for tag
-        return f"Unknown ({user_id})"
     
     async def match_select_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        self.selected_match_index = int(interaction.data['values'][0])
+        user_id = interaction.user.id
+        if user_id not in self.user_selections:
+            self.user_selections[user_id] = {}
+        self.user_selections[user_id]['match_id'] = int(interaction.data['values'][0])
 
     async def result_select_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        self.selected_result = interaction.data['values'][0]
+        user_id = interaction.user.id
+        if user_id not in self.user_selections:
+            self.user_selections[user_id] = {}
+        self.user_selections[user_id]['result'] = interaction.data['values'][0]
 
     async def save_callback(self, interaction: discord.Interaction):
         processing, msg = await self.is_processing()
@@ -82,21 +76,33 @@ class RunningEventView(discord.ui.View):
             return
         await interaction.response.defer()
 
-        if self.selected_match_index is None or self.selected_result is None:
+        user_id = interaction.user.id
+        selections = self.user_selections.get(user_id, {})
+        if 'match_id' not in selections or 'result' not in selections:
+            await interaction.followup.send("You must select a match AND a result!", ephemeral=True)
             return
 
-        row = self.event.matches.get_match(self.selected_match_index)
-        a_wins, b_wins = map(int, self.selected_result.split("x"))
+        match: Match = self.event.get_match(selections['match_id'])
+        a_wins, b_wins = map(int, selections['result'].split("x"))
         self.event = db_event.update_matches(self.event.guild_id, self.event.channel_id, self.event.event_id, 
-                                             row[Matches.COL_PLAYER_A], row[Matches.COL_PLAYER_B], a_wins, b_wins)
+                                             match.get_player(), match.get_opponent(), a_wins, b_wins)
+
+        # Clear the user's selections after saving
+        del self.user_selections[user_id]
 
         await self.update_message(interaction)
         functions.channelnameopen(interaction.channel, self.event.event_id)
 
+    def get_member_name(self, interaction: discord.Interaction, user_tag: str):
+        member = interaction.guild.get_member(int(user_tag.replace("<@", "").replace(">", "")))
+        if member:
+            return member.display_name  # or use member.mention for tag
+        return user_tag
+
     def build_embed(self):
         if self.event.victory is not None:
             self.clear_items()
-        embed = self.print_event_started(self.event)
+        embed = self.print_event_started()
         return embed
 
     async def is_processing(self):
@@ -109,12 +115,12 @@ class RunningEventView(discord.ui.View):
             await self.message.edit(embed=self.build_embed(), view=self)
 
 
-    def print_event_started(self, event_obj: Event):
-        list = event_obj.matches.to_list()
-        str_title = "__**Event ID:**__ " + str(event_obj.event_id)
+    def print_event_started(self):
+        list = self.event.get_matches()
+        str_title = "__**Event ID:**__ " + str(self.event.get_id())
         embed = discord.Embed(title=str_title, color=0x03f8fc)
         count = len(list)
-        matches = ''
+        matches_desc = ''
         playersA = ''
         playersB = ''
         pos = 0
@@ -123,38 +129,40 @@ class RunningEventView(discord.ui.View):
         nrp = math.sqrt(count)
         toadd = 1
 
-        for match in list:
-            pos = pos + 1
-            if str(match[1]) == '2':
-                winA = winA + 1
-            if str(match[3]) == '2':
-                winB = winB + 1
-            if pos == toadd:
-                playersA = playersA + match[0]
-                playersB = playersB + match[2]
-                toadd = toadd + nrp + 1
-            if match[1] == match[3] and match[3] == 0:
-                matches = matches + str(match[0]) + \
-                    ' - ' + str(match[2]) + '\n'
-            else:
-                matches = matches + str(match[0]) + ' ' + str(match[1]) + \
-                    '-' + str(match[3]) + ' ' + str(match[2]) + '\n'
+        for m in list:
+            if isinstance(m, Match):
+                match: Match = m
+                pos = pos + 1
+                if str(match.wins_a) == '2':
+                    winA = winA + 1
+                if str(match.wins_b) == '2':
+                    winB = winB + 1
+                if pos == toadd:
+                    playersA = playersA + str(match.player_a)
+                    playersB = playersB + str(match.player_b)
+                    toadd = toadd + nrp + 1
+                if match.wins_a == 0 and match.wins_b == 0:
+                    matches_desc = matches_desc + str(match.player_a) + \
+                        ' - ' + str(match.player_b) + '\n'
+                else:
+                    matches_desc = matches_desc + str(match.player_a) + ' ' + str(match.wins_a) + \
+                        '-' + str(match.wins_b) + ' ' + str(match.player_b) + '\n'
 
         emjA = ''
         emjB = ''
         labelA = 'Player: '
         labelB = 'Player: '
-        if str(event_obj.victory) == '2':
+        if str(self.event.get_victory()) == '2':
             labelB = 'WINNERS: '
             labelA = 'losers: '
             emjA = ':skull:'
             emjB = ':trophy:'
-        elif str(event_obj.victory) == '1':
+        elif str(self.event.get_victory()) == '1':
             labelA = 'WINNERS: '
             labelB = 'losers: '
             emjA = ':trophy:'
             emjB = ':skull:'
-        elif str(event_obj.victory) == '0':
+        elif str(self.event.get_victory()) == '0':
             emjA = '🍕'
             emjB = '🍕'
 
@@ -163,7 +171,7 @@ class RunningEventView(discord.ui.View):
         embed.add_field(name='Team B ' + str(emjB),
                         value=f'{labelB}{playersB}\nWin: {winB}', inline=False)
         embed.add_field(name=f'Pairings: {winA + winB}/{count}',
-                        value=matches, inline=False)
+                        value=f'{matches_desc}', inline=False)
         return embed
 
     @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")

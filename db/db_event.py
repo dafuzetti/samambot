@@ -52,7 +52,7 @@ def read_event(ctx_guild, ctx_channel, event_id) -> Event:
             conn.close()
     return event_data
 
-
+# find open event
 def find_event(ctx_guild, ctx_channel) -> Event:
     event_data = None
     conn = None
@@ -76,8 +76,27 @@ def find_event(ctx_guild, ctx_channel) -> Event:
     return event_data
 
 
+def update_matches_from_channel(ctx_guild, ctx_channel, winner_tag, loser_tag, game_loss) -> Event:
+    event = find_event(ctx_guild, ctx_channel)
+    if event is None:
+        return "Event not found.", None
+
+    match_result = event.set_match_by_winner(winner_tag, loser_tag, game_loss)
+    if match_result is None:
+        return "Match not found.", None
+    try:
+        conn = db.get_connection()
+        sql_match.Sql_Match.update_match(conn, match_result.get_wins(), match_result.get_losses(),
+                                        event.event_id, match_result.get_player(), match_result.get_opponent())
+        conn.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+    return "Match updated.", read_event(ctx_guild, ctx_channel, event.event_id)
+
 def update_matches(ctx_guild, ctx_channel, event_id, player, opponent, win, lose) -> Event:
-    conn = None
     if event_id is not None:
         try:
             conn = db.get_connection()
@@ -100,10 +119,11 @@ def read_matches(event=None) -> Matches:
         cur = conn.cursor()
 
         cur.execute(
-            """SELECT 
+            """SELECT
+                id,
                 player, 
-                COALESCE(win, 0), 
                 opponent, 
+                COALESCE(win, 0), 
                 COALESCE(lose, 0) 
             FROM match 
             WHERE event=%s 
@@ -199,9 +219,9 @@ def create_event(ctx_guild, ctx_channel, players:Players) -> Event:
     ret = None
     try:
         event_id = new_event(ctx_guild, ctx_channel)
-        new_team(ctx_guild, ctx_channel, event_id, players.get_team(1), True)
-        new_team(ctx_guild, ctx_channel, event_id, players.get_team(2), False)
-        save_matches(ctx_guild, ctx_channel, event_id, players.generate_matches())
+        new_team(event_id, players.get_team_tags(1), True)
+        new_team(event_id, players.get_team_tags(2), False)
+        save_matches(event_id, players.generate_pairings())
         ret = read_event(ctx_guild, ctx_channel, event_id)
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
@@ -243,7 +263,7 @@ def new_event(ctx_guild, ctx_channel, teams: int = 2, type: int = 0):
     return event_id
 
 
-def new_team(ctx_guild, ctx_channel, event_id, player_list, team_A: bool = True):
+def new_team(event_id, player_list, team_A: bool = True):
     conn = None
     if team_A:
         team_id = 1
@@ -266,7 +286,7 @@ def new_team(ctx_guild, ctx_channel, event_id, player_list, team_A: bool = True)
                 conn.close()
 
 
-def save_matches(ctx_guild, ctx_channel, event, list):
+def save_matches(event, list):
     event_id = event
     conn = None
     if event_id is not None:
@@ -275,7 +295,7 @@ def save_matches(ctx_guild, ctx_channel, event, list):
             cur = conn.cursor()
             for match in list:
                 bind_vars = (event_id, match[0], match[1], event_id, match[0], match[1],)
-                result = cur.execute(SQL_INSERT_MATCH, bind_vars)
+                cur.execute(SQL_INSERT_MATCH, bind_vars)
             conn.commit()
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
