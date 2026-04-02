@@ -75,7 +75,7 @@ def return_message(base_msg: str="", followup_msg=None):
 async def clean(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     State.clear_events()
-    await interaction.followup.send("Use /new_event in the same channel the events were running", ephemeral=True)
+    await interaction.followup.send("Use /event in the same channel the events were running", ephemeral=True)
 
 @tree.command(name="event", description="Start an event")
 async def event(interaction: discord.Interaction):
@@ -157,11 +157,11 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# refazer queries (blocar edicao de eventos encerrados)
-
 # comandos de estatistica 
 # move here
 
+# move read_events para dentro das comm
+# blocar edicao de eventos encerrados
 # contador de eventos por guild ID?
 # remove all team A/B e criar eventos individuais
 # to no play 
