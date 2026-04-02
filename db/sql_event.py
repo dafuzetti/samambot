@@ -39,12 +39,12 @@ class Sql_Event:
                         %s::int4 AS event_type
             ),
             max_count AS (
-                SELECT COALESCE(COUNT(event_count), 0) + 1 AS next_count
+                SELECT COALESCE(COUNT(sequence), 0) + 1 AS next_count
                 FROM event, input
                 WHERE event.guild = input.guild
                 AND (event.category = input.category OR (event.category IS NULL AND input.category IS NULL))
             )
-            INSERT INTO event (guild, channel, category, date, type, event_count)
+            INSERT INTO event (guild, channel, category, date, type, sequence)
             SELECT guild, channel, category, event_date, event_type, next_count
             FROM input, max_count
             RETURNING id;
