@@ -157,15 +157,18 @@ async def on_ready():
 
 bot.run(TOKEN)
 
+# nome para eventos / id por temporada
+# nome para temporadas
+
+# arquivo de fechamento de event 
 # comandos de estatistica 
-# move here
+# move here / liberar para eventos encerrados? bloquear por usuario?
 
 # move read_events para dentro das comm
 # blocar edicao de eventos encerrados
 # contador de eventos por guild ID?
 # remove all team A/B e criar eventos individuais
 # to no play 
-# criar novas temporadas 
 # nome/id do event? comandos de resultado? Deletar evento? 
 # remover classes.propriety access
 # remover teams a and b from creatingevent and add a list of players 

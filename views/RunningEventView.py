@@ -67,8 +67,8 @@ class RunningEventView(discord.ui.View):
         State.remove_event(interaction.channel.id)
         self.event = db_event.close_event(self.guild_id, self.channel_id, self.event.event_id)
         await self.update_message()
-        functions.channelnameclose(interaction.channel)
         await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
+        functions.channelnameclose(interaction.channel)
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):

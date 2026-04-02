@@ -133,9 +133,13 @@ class CreatingEventView(discord.ui.View):
             await self.update_message(clean_btns=True) 
             players = Players()
             players.add_teams(self.team_a, self.team_b)
+            category_id = None
+            if interaction.channel.category is not None:
+                category_id = interaction.channel.category_id
             event=db_event.create_event(
                     interaction.guild_id,
                     interaction.channel_id,
+                    category_id,
                     players
                 )
             new_view = RunningEventView(

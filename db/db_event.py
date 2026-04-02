@@ -181,13 +181,13 @@ def find_event(guild, channel) -> Event:
             conn.close()
     return None
 
-def create_event(guild, channel, players: Players, event_type = 2) -> Event:
+def create_event(guild, channel, category, players: Players, event_type = 2) -> Event:
     conn = None
     event_ret = None
     try:
         conn = db.get_connection()
         with conn.cursor() as cur:
-            event_id = Sql_Event.create_event(cur, guild, channel, event_type)
+            event_id = Sql_Event.create_event(cur, guild, channel, category, event_type)
             for p in players.get_team_tags(1):
                 Sql_Team.add_player_to_team(cur, event_id, p, 1)
             for p in players.get_team_tags(2):

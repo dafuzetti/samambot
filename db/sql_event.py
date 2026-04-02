@@ -28,28 +28,44 @@ class Sql_Event:
         return cursor.fetchone()
     
     @staticmethod
-    def create_event(cursor, guild, channel, event_type):
+    def create_event(cursor, guild, channel, category, event_type):
         event_date = date.today().strftime("%Y%m%d")
         query = """
-            INSERT INTO 
-            event (guild, channel, date, type) 
-            VALUES (%s, %s, %s, %s) RETURNING id
+            WITH input AS (
+                SELECT  %s::text AS guild,
+                        %s::text AS channel,
+                        %s::text AS category,
+                        %s::int4 AS event_date,
+                        %s::int4 AS event_type
+            ),
+            max_count AS (
+                SELECT COALESCE(COUNT(event_count), 0) + 1 AS next_count
+                FROM event, input
+                WHERE event.guild = input.guild
+                AND (event.category = input.category OR (event.category IS NULL AND input.category IS NULL))
+            )
+            INSERT INTO event (guild, channel, category, date, type, event_count)
+            SELECT guild, channel, category, event_date, event_type, next_count
+            FROM input, max_count
+            RETURNING id;
         """
-        cursor.execute(query, (str(guild), str(channel), event_date, event_type,))
+
+        cursor.execute(query, (guild, channel, category, event_date, event_type))
 
         row = cursor.fetchone()
         return row[0] if row else None
 
     @staticmethod
-    def move_event(cursor, guild, new_channel, event_id):
+    def move_event(cursor, guild, new_channel, new_category, event_id):
         query = """
             UPDATE event 
-            SET channel = %s 
+            SET channel = %s,
+                category = %s
             WHERE id = %s 
             AND guild = %s
             AND victory IS NULL;
         """
-        cursor.execute(query, (str(new_channel), event_id, str(guild)))
+        cursor.execute(query, (str(new_channel), str(new_category), event_id, str(guild)))
         return cursor.rowcount
 
     @staticmethod
