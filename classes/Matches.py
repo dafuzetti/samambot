@@ -13,8 +13,10 @@ class Matches:
     def len(self):
         return len(self.matches)
 
-    def get_matches(self):
-        return self.matches
+    def get_matches(self, player_id=None):
+        if player_id is None:
+            return self.matches
+        return [m for m in self.matches if m.get_player() == player_id or m.get_opponent() == player_id]
 
     def set_matches(self, matches):
         self.matches = matches

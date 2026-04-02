@@ -1,5 +1,7 @@
 import asyncio
 
+import discord
+
 def channelnameopen(channel, event_id):
     if '-_' in channel.name:
         base = get_base_channel_name(channel)
@@ -20,3 +22,21 @@ def get_base_channel_name(channel):
 def update_channelname(channel, name):
     if channel.name != name:
         asyncio.create_task(channel.edit(name=name))
+
+import re
+
+async def get_player_name(interaction, player: str) -> str:
+    match = re.search(r"<@!?(\d+)>", player)
+    if not match:
+        return player  # fallback (already a name)
+
+    user_id = int(match.group(1))
+
+    member = interaction.guild.get_member(user_id)
+    if not member:
+        try:
+            member = await interaction.guild.fetch_member(user_id)
+        except:
+            return player
+
+    return member.display_name

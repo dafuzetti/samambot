@@ -40,7 +40,7 @@ class Players:
         for p in self.players:
             teams.setdefault(p.team, []).append(p)
 
-        matches = []
+        pairings = []
 
         team_list = list(teams.values())
 
@@ -53,6 +53,6 @@ class Players:
                 # all player vs player
                 for p1 in team_a:
                     for p2 in team_b:
-                        matches.append((p1.get_mention(), p2.get_mention()))
+                        pairings.append((p1.get_mention(), p2.get_mention()))
 
-        return matches
+        return pairings

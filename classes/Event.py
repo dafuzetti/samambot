@@ -2,13 +2,12 @@ from classes.Matches import Matches
 from classes.Players import Players
 
 class Event:
-    def __init__(self, guild_id, channel_id, event_id=None, matches: Matches=None, teams=2, victory=None):
+    def __init__(self, guild_id, channel_id, event_id=None, matches: Matches=None, type = 2, victory=None):
         self.guild_id = guild_id
         self.channel_id = channel_id
-
+        self.type = type
         self.event_id = event_id
         self.matches = matches
-        self.teams = teams
         self.victory = victory
         
     def load(self):
@@ -45,7 +44,7 @@ class Event:
             return None
         return self.matches.get_match(match_id)
 
-    def get_matches(self):
+    def get_matches(self, player_tag=None):
         if self.matches is None:
             return []
-        return self.matches.get_matches()
+        return self.matches.get_matches(player_tag)

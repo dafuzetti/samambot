@@ -133,16 +133,17 @@ class CreatingEventView(discord.ui.View):
             await self.update_message(clean_btns=True) 
             players = Players()
             players.add_teams(self.team_a, self.team_b)
-            new_view = RunningEventView(
-                interaction=interaction,
-                event=db_event.create_event(
+            event=db_event.create_event(
                     interaction.guild_id,
                     interaction.channel_id,
                     players
                 )
+            new_view = RunningEventView(
+                interaction=interaction,
+                event=event
             )
-            State.set_eventView(interaction.channel.id, new_view)
             new_view.message = await interaction.channel.send(embed=new_view.build_embed(),view=new_view)
+            State.set_eventView(interaction.channel.id, new_view)
             try:
                 await interaction.edit_original_response(content=f"Event started!", view=None)
             except:
