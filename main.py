@@ -156,12 +156,8 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
-# adicionar opcao - remover resultado
+
 # refazer queries (blocar edicao de eventos encerrados)
-# match using player objc, return team from players at query
-# mover print para dentro das classes
-# remover classes.propriety access
-# remover teams a and b from creatingevent and add a list of players 
 
 # comandos de estatistica 
 # move here
@@ -171,3 +167,8 @@ bot.run(TOKEN)
 # to no play 
 # criar novas temporadas 
 # nome/id do event? comandos de resultado? Deletar evento? 
+# remover classes.propriety access
+# remover teams a and b from creatingevent and add a list of players 
+# mover print para dentro das classes
+# match using player objc, return team from players at query
+# populaet name at players 

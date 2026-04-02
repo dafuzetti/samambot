@@ -19,6 +19,14 @@ class Match:
         self.wins_a = wins_a
         self.wins_b = wins_b
 
+    def have_names(self):
+        if self.player_a == self.player_a_name:
+            return False
+        return True
+
+    def hava_player(self, player_tag):
+        return player_tag == self.player_a or player_tag == self.player_b
+
     def get_player(self):
         return self.player_a
 

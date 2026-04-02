@@ -73,20 +73,32 @@ class RunningEventView(discord.ui.View):
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):
         processing, msg = await self.is_processing()
+        player = interaction.user.mention
+        in_event = False
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
         for m in self.event.get_matches():
             if isinstance(m, Match):
                 match: Match = m
-                match.set_names(await functions.get_player_name(interaction, match.player_a), await functions.get_player_name(interaction, match.player_b))
+                if not in_event:
+                    in_event = match.hava_player(player)
+                if not match.have_names():
+                    match.set_names(await functions.get_player_name(interaction, match.player_a), await functions.get_player_name(interaction, match.player_b))
 
-        confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
-        await interaction.response.send_message(
-            "Select your opponent:",
-            view=confirm_view,
-            ephemeral=True
-        )
+        if in_event:
+            confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
+            await interaction.response.send_message(
+                "Select your opponent:",
+                view=confirm_view,
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "You are not in the event.\n " \
+                "Report a match for other players by using /result",
+                ephemeral=True
+            )
 
     def print_event_started(self):
         list = self.event.get_matches()

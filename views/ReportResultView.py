@@ -9,7 +9,6 @@ from db import db_event
 class ReportResultView(discord.ui.View, Event):
     def __init__(self, interaction: discord.Interaction = None, event_data: Event = None):
         super().__init__(timeout=60)
-
         for m in event_data.get_matches(interaction.user.mention):
             if isinstance(m, Match):
                 match_data: Match = m
@@ -26,6 +25,7 @@ class ReportResultView(discord.ui.View, Event):
 
                 button.callback = callback
                 self.add_item(button)
+
 
 class ResultSelectView(discord.ui.View, Event):
     def __init__(self, match: Match, event_data: Event):
