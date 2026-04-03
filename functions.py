@@ -2,10 +2,10 @@ import asyncio
 
 import discord
 
-def channelnameopen(channel, event_id):
+def channelnameopen(channel, event_name):
     if '-_' in channel.name:
         base = get_base_channel_name(channel)
-        newname = f"{base}-_{event_id}_"
+        newname = f"{base}-_{event_name}_"
     update_channelname(channel, newname)
 
 def channelnameclose(channel):

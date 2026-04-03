@@ -5,7 +5,7 @@ class Sql_Event:
     @staticmethod
     def read_event(cursor, guild, channel, event_id):
         query = """
-            SELECT id, type, victory 
+            SELECT id, type, victory, sequence
             FROM event 
             WHERE guild = %s
             AND channel = %s
@@ -17,7 +17,7 @@ class Sql_Event:
     @staticmethod
     def find_event(cursor, guild, channel):
         query = """
-            SELECT id, type, victory 
+            SELECT id, type, victory, sequence
             FROM event 
             WHERE  guild = %s
             AND channel = %s

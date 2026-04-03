@@ -2,14 +2,15 @@ from classes.Matches import Matches
 from classes.Players import Players
 
 class Event:
-    def __init__(self, guild_id, channel_id, event_id=None, matches: Matches=None, type = 2, victory=None):
+    def __init__(self, guild_id, channel_id, event_id=None, matches: Matches=None, type = 2, victory=None, sequence=None):
         self.guild_id = guild_id
         self.channel_id = channel_id
         self.type = type
         self.event_id = event_id
         self.matches = matches
+        self.sequence = sequence
         self.victory = victory
-        
+
     def load(self):
         return
     
@@ -33,6 +34,11 @@ class Event:
     
     def get_channel_tag(self):
         return f"<#{self.channel_id}>"
+    
+    def get_event_name(self):
+        if self.sequence is None:
+            return self.event_id
+        return self.sequence
     
     def set_match_by_winner(self, winner_tag, loser_tag, game_loss):
         if self.matches is None:

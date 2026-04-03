@@ -152,4 +152,4 @@ class CreatingEventView(discord.ui.View):
                 await interaction.edit_original_response(content=f"Event started!", view=None)
             except:
                 pass
-            functions.channelnameopen(interaction.channel, new_view.event.event_id)
+            functions.channelnameopen(interaction.channel, new_view.event.get_event_name())

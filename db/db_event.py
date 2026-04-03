@@ -148,7 +148,8 @@ def read_event(guild, channel, event_id) -> Event:
             event_id=row[0],
             matches=matches,
             type=row[1],
-            victory=row[2]
+            victory=row[2],
+            sequence=row[3]
         )
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
@@ -172,7 +173,8 @@ def find_event(guild, channel) -> Event:
             event_id=row[0],
             matches=matches,
             type=row[1],
-            victory=row[2]
+            victory=row[2],
+            sequence=row[3]
         )
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
@@ -183,7 +185,6 @@ def find_event(guild, channel) -> Event:
 
 def create_event(guild, channel, category, players: Players, event_type = 2) -> Event:
     conn = None
-    event_ret = None
     try:
         conn = db.get_connection()
         with conn.cursor() as cur:
@@ -194,22 +195,13 @@ def create_event(guild, channel, category, players: Players, event_type = 2) -> 
                 Sql_Team.add_player_to_team(cur, event_id, p, 2)
             for pair in players.generate_pairings():
                 Sql_Match.create_match(cur, event_id, pair[0], pair[1])
-            matches = Matches(Sql_Match.read_matches_by_event(cur, event_id))
-            if matches:
-                event_ret = Event(
-                    guild,
-                    channel,
-                    event_id=event_id,
-                    matches=matches,
-                    type=event_type
-                )
         conn.commit()
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     finally:
         if conn is not None:
             conn.close()
-    return event_ret
+    return read_event(guild, channel, event_id)
 
 def close_event(guild, channel, event_id) -> Event:
     conn = None
