@@ -19,6 +19,7 @@ class RunningEventView(discord.ui.View):
         self.event = event
         self.guild_id = interaction.guild.id
         self.channel_id = interaction.channel.id
+        self.season_name = getattr(getattr(interaction.channel, "category", None), "name", "")
 
     def build_embed(self):
         if self.event.victory is not None:
@@ -67,8 +68,8 @@ class RunningEventView(discord.ui.View):
         State.remove_event(interaction.channel.id)
         self.event = db_event.close_event(self.guild_id, self.channel_id, self.event.event_id)
         await self.update_message()
-        functions.channelnameclose(interaction.channel)
         await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
+        functions.channelnameclose(interaction.channel)
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -102,7 +103,7 @@ class RunningEventView(discord.ui.View):
 
     def print_event_started(self):
         list = self.event.get_matches()
-        str_title = "__**Event ID:**__ " + str(self.event.get_id())
+        str_title = f"__**Event:**__ {self.event.get_event_name()}  {self.season_name}"
         embed = discord.Embed(title=str_title, color=0x03f8fc)
         count = len(list)
         matches_desc = ''
@@ -151,6 +152,8 @@ class RunningEventView(discord.ui.View):
             emjA = '🍕'
             emjB = '🍕'
 
+        #embed.add_field(name='Event ID: ', value=str(self.event.get_id()), inline=True)
+        embed.description = f'Event ID: {str(self.event.get_id())}'
         embed.add_field(name='Team A ' + str(emjA),
                         value=f'{labelA}{playersA}\nWin: {winA}', inline=False)
         embed.add_field(name='Team B ' + str(emjB),

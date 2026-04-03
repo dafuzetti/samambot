@@ -133,9 +133,13 @@ class CreatingEventView(discord.ui.View):
             await self.update_message(clean_btns=True) 
             players = Players()
             players.add_teams(self.team_a, self.team_b)
+            category_id = None
+            if interaction.channel.category is not None:
+                category_id = interaction.channel.category_id
             event=db_event.create_event(
                     interaction.guild_id,
                     interaction.channel_id,
+                    category_id,
                     players
                 )
             new_view = RunningEventView(
@@ -148,4 +152,4 @@ class CreatingEventView(discord.ui.View):
                 await interaction.edit_original_response(content=f"Event started!", view=None)
             except:
                 pass
-            functions.channelnameopen(interaction.channel, new_view.event.event_id)
+            functions.channelnameopen(interaction.channel, new_view.event.get_event_name())
