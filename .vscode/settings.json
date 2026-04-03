@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./views",
+        "./classes"
+    ],
+    "python.REPL.enableREPLSmartSend": false
+}
