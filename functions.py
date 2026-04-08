@@ -1,7 +1,5 @@
 import asyncio
 
-import discord
-
 def channelnameopen(channel, event_name):
     if '-_' in channel.name:
         base = get_base_channel_name(channel)

@@ -76,7 +76,7 @@ def return_message(base_msg: str="", followup_msg=None):
 @ tree.command(name='games', description='Return missing matches from all events.')
 async def clean(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
-    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.user.mention))
+    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention))
     embed_built = await view.build_embed(interaction)
     await interaction.followup.send(embed=embed_built, ephemeral=True)
 
