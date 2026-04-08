@@ -4,7 +4,9 @@ from decouple import config
 
 from views.CreatingEventView import CreatingEventView
 from views.RunningEventView import RunningEventView
+from views.MyMatchesView import MyMatchesView
 import db.db_event as db_event
+import db.db_reports as db_reports
 import functions
 from classes.State import State
 
@@ -70,6 +72,13 @@ def return_message(base_msg: str="", followup_msg=None):
     if followup_msg:
         return f"{base_msg}\n{followup_msg}"
     return base_msg
+
+@ tree.command(name='games', description='Return missing matches from all events.')
+async def clean(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention))
+    embed_built = await view.build_embed(interaction)
+    await interaction.followup.send(embed=embed_built, ephemeral=True)
 
 @ tree.command(name='clean', description='If event are showing wrong info, use this command to clean the channel and reset the event.')
 async def clean(interaction: discord.Interaction):
@@ -157,19 +166,23 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# nome para eventos / id por temporada
-# nome para temporadas
-
-# arquivo de fechamento de event 
+# User log table 
+# my open games
 # comandos de estatistica 
+# public message when event gets closed?
+# arquivo de fechamento de event 
 # move here / liberar para eventos encerrados? bloquear por usuario?
+# Block evento sem category?
 
+# blocar edicao de eventos encerrados db
+# to no play 
+# Guardar nome das seasons?
+# close season? 
+# Season type team/individual
 # move read_events para dentro das comm
-# blocar edicao de eventos encerrados
 # contador de eventos por guild ID?
 # remove all team A/B e criar eventos individuais
-# to no play 
-# nome/id do event? comandos de resultado? Deletar evento? 
+# Deletar evento?  
 # remover classes.propriety access
 # remover teams a and b from creatingevent and add a list of players 
 # mover print para dentro das classes

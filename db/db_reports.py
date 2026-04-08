@@ -1,11 +1,10 @@
-import pandas
 import psycopg2
+import asyncio
 from urllib.parse import urlparse
-from datetime import date
+from db.sql_report import Sql_Report
+from db.sql_log import Sql_Log
+import db.db_conn as db
 from decouple import config
-from classes.Matches import Matches
-from classes.Players import Players
-from classes.Event import Event
 
 SQL_PLAYER_VS = """SELECT
                     TE.PLAYER,
@@ -175,6 +174,24 @@ def player_history(ctx_guild, ctx_channel):
         rows = cur.fetchall()
         conn.commit()
         cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+    return rows
+
+
+def open_matches(guild, channel, user):
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "open_matches", f"{guild}, {user}")
+    )
+    conn = None
+    rows = None
+    try:
+        conn = db.get_connection()
+        with conn.cursor() as cur:
+            rows = Sql_Report.open_matches(cur, guild, user)
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     finally:
