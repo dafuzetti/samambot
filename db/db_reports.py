@@ -1,6 +1,8 @@
 import psycopg2
+import asyncio
 from urllib.parse import urlparse
 from db.sql_report import Sql_Report
+from db.sql_log import Sql_Log
 import db.db_conn as db
 from decouple import config
 
@@ -180,7 +182,10 @@ def player_history(ctx_guild, ctx_channel):
     return rows
 
 
-def open_matches(guild, user):
+def open_matches(guild, channel, user):
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "open_matches", f"{guild}, {user}")
+    )
     conn = None
     rows = None
     try:
