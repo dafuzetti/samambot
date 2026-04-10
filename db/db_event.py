@@ -183,6 +183,51 @@ def find_event(guild, channel) -> Event:
             conn.close()
     return None
 
+def get_all_active_events() -> list[Event]:
+    conn = None
+    events = []
+    try:
+        conn = db.get_connection()
+        cur = conn.cursor()
+        query = """
+            SELECT id, guild, channel, type, victory, sequence
+            FROM event 
+            WHERE victory IS NULL
+        """
+        cur.execute(query)
+        rows = cur.fetchall()
+        for row in rows:
+            matches = read_matches(row[0])
+            events.append(Event(
+                guild_id=int(row[1]),
+                channel_id=int(row[2]),
+                event_id=row[0],
+                matches=matches,
+                type=row[3],
+                victory=row[4],
+                sequence=row[5]
+            ))
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+    return events
+
+def update_event_message_id(event_id, message_id):
+    conn = None
+    try:
+        conn = db.get_connection()
+        with conn.cursor() as cur:
+            query = "UPDATE event SET message_id = %s WHERE id = %s"
+            cur.execute(query, (message_id, event_id))
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
 def create_event(guild, channel, category, players: Players, event_type = 2) -> Event:
     conn = None
     try:
@@ -205,6 +250,7 @@ def create_event(guild, channel, category, players: Players, event_type = 2) -> 
 
 def close_event(guild, channel, event_id) -> Event:
     conn = None
+    winner = 0
     try:
         conn = db.get_connection()
         cur = conn.cursor()
