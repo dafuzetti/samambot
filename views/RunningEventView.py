@@ -12,14 +12,15 @@ from classes.Event import Event
 from classes.State import State
 
 class RunningEventView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction, event: Event):
+    def __init__(self, event: Event, interaction: discord.Interaction = None):
         super().__init__(timeout=None)
         self.message = None
         self.processing_player = None  # Flag to prevent multiple simultaneous actions
         self.event = event
-        self.guild_id = interaction.guild.id
-        self.channel_id = interaction.channel.id
-        self.season_name = getattr(getattr(interaction.channel, "category", None), "name", "")
+        self.guild_id = event.guild_id if interaction is None else interaction.guild.id
+        self.channel_id = event.channel_id if interaction is None else interaction.channel.id
+        self.season_name = "" if interaction is None else getattr(getattr(interaction.channel, "category", None), "name", "")
+        
 
     def build_embed(self):
         if self.event.victory is not None:

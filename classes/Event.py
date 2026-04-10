@@ -2,7 +2,7 @@ from classes.Matches import Matches
 from classes.Players import Players
 
 class Event:
-    def __init__(self, guild_id, channel_id, event_id=None, matches: Matches=None, type = 2, victory=None, sequence=None):
+    def __init__(self, guild_id, channel_id, event_id=None, matches: Matches=None, type = 2, victory=None, sequence=None, message_id=None):
         self.guild_id = guild_id
         self.channel_id = channel_id
         self.type = type
@@ -10,6 +10,7 @@ class Event:
         self.matches = matches
         self.sequence = sequence
         self.victory = victory
+        self.message_id = message_id
 
     def load(self):
         return
