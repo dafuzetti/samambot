@@ -60,7 +60,7 @@ async def event_message(interaction: discord.Interaction, view=None):
         try:
             if view_event.event.message_id is not None:
                 channel = bot.get_channel(view_event.event.channel_id)
-                view_event.message = await channel.fetch_message(event.message_id)
+                view_event.message = await channel.fetch_message(view_event.event.message_id)
         except:
             view_event.message = None
 
@@ -196,7 +196,6 @@ async def on_ready():
         view = RunningEventView(event=event)
         await event_message(interaction=None, view=view)
         bot.add_view(view)
-        State.set_eventView(event.channel_id, view)
 
     print(f"Logged in as {bot.user}")
 

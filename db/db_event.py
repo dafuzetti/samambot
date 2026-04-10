@@ -189,24 +189,22 @@ def get_all_active_events() -> list[Event]:
     try:
         conn = db.get_connection()
         cur = conn.cursor()
-        query = """
-            SELECT id, guild, channel, type, victory, sequence
-            FROM event 
-            WHERE victory IS NULL
-        """
-        cur.execute(query)
-        rows = cur.fetchall()
-        for row in rows:
-            matches = read_matches(row[0])
-            events.append(Event(
-                guild_id=int(row[1]),
-                channel_id=int(row[2]),
-                event_id=row[0],
-                matches=matches,
-                type=row[3],
-                victory=row[4],
-                sequence=row[5]
-            ))
+        rows = Sql_Event.get_all_active(cur)
+        if rows is None:
+            return None
+        else:
+            for row in rows:
+                matches = read_matches(row[0])
+                events.append(Event(
+                    guild_id=int(row[1]),
+                    channel_id=int(row[2]),
+                    event_id=row[0],
+                    matches=matches,
+                    type=row[3],
+                    victory=row[4],
+                    sequence=row[5],
+                    message_id=row[6]
+                ))
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     finally:
@@ -219,8 +217,7 @@ def update_event_message_id(event_id, message_id):
     try:
         conn = db.get_connection()
         with conn.cursor() as cur:
-            query = "UPDATE event SET message_id = %s WHERE id = %s"
-            cur.execute(query, (message_id, event_id))
+            Sql_Event.update_message_id(cur, message_id, event_id)
         conn.commit()
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
