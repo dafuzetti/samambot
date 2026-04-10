@@ -85,9 +85,10 @@ class ScoreView(discord.ui.View):
                 loss = 2 if user_won else (1 if match_lost else 0)
                 win = (1 if match_lost else 0) if user_won else 2
             
-            event_data = db_event.update_matches(interaction.guild.id, interaction.channel.id, self.event_data.event_id, 
+            event_data = db_event.update_matches(interaction.guild.id, interaction.channel.id, self.event_data.event_id, interaction.user.mention, 
                                                  self.match.get_player(), self.match.get_opponent(), win, loss)
             original_view = State.get_eventView(interaction.channel.id)
+            #quebrando quando inicia o servidor, apos /event functiona normal
             original_view.event = event_data
             await original_view.update_message()
             await interaction.edit_original_response(

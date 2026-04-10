@@ -40,7 +40,10 @@ def update_matches_from_channel(guild, channel, user, winner_tag, loser_tag, gam
             conn.close()
     return "Match updated.", read_event(guild, channel, event.event_id)
 
-def update_matches(ctx_guild, ctx_channel, event_id, player, opponent, win, lose) -> Event:
+def update_matches(guild, channel, event_id, user, player, opponent, win, lose) -> Event:
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "update_matches", f"{event_id}, {player}, {opponent}, {win}, {lose}")
+    )
     conn = None
     if event_id is not None:
         try:
@@ -53,7 +56,7 @@ def update_matches(ctx_guild, ctx_channel, event_id, player, opponent, win, lose
         finally:
             if conn is not None:
                 conn.close()
-    return read_event(ctx_guild, ctx_channel, event_id)
+    return read_event(guild, channel, event_id)
 
 def read_matches(event_id=None) -> Matches:
     conn = None

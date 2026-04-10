@@ -72,10 +72,11 @@ async def event_message(interaction: discord.Interaction, view=None):
 
     if view_event.message is None:
         view_event.message = await channel.send(embed=view_event.build_embed(), view=view_event)
-        State.set_eventView(channel.id, view_event)
         if view_event and hasattr(view_event, "event") and view_event.event:
             if hasattr(view_event.event, "event_id"):
                 db_event.update_event_message_id(view_event.event.event_id, view_event.message.id)
+        
+    State.set_eventView(channel.id, view_event)
 
     return f"See event message: https://discord.com/channels/{channel.guild.id}/{channel.id}/{view_event.message.id}"
 
