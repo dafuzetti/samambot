@@ -148,6 +148,7 @@ class CreatingEventView(discord.ui.View):
             )
             new_view.message = await interaction.channel.send(embed=new_view.build_embed(),view=new_view)
             State.set_eventView(interaction.channel.id, new_view)
+            db_event.update_event_message_id(new_view.event.event_id, new_view.message.id)
             try:
                 await interaction.edit_original_response(content=f"Event started!", view=None)
             except:
