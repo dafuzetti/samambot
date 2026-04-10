@@ -26,6 +26,16 @@ class Sql_Event:
         """
         cursor.execute(query, (str(guild), str(channel),))
         return cursor.fetchone()
+
+    @staticmethod
+    def get_all_active(cursor):
+        query = """
+            SELECT id, guild, channel, type, victory, sequence, message_id
+            FROM event 
+            WHERE victory IS NULL
+        """
+        cursor.execute(query, ())
+        return cursor.fetchall()
     
     @staticmethod
     def create_event(cursor, guild, channel, category, event_type):
@@ -115,3 +125,11 @@ class Sql_Event:
         """
         cursor.execute(query, (event_id,))
         return cursor.fetchall()
+
+    @staticmethod
+    def update_message_id(cursor, message_id, event_id):
+        query = """
+            UPDATE event SET message_id = %s WHERE id = %s
+        """
+        cursor.execute(query, (message_id, event_id,))
+        return cursor.rowcount

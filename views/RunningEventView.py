@@ -2,24 +2,27 @@ import math
 import discord
 
 import db.db_event as db_event
+import db.db_reports as db_reports
 import functions
 
 from views.ConfirmCloseView import ConfirmCloseView
 from views.ReportResultView import ReportResultView
+from views.MyMatchesView import MyMatchesView
 
 from classes.Match import Match
 from classes.Event import Event
 from classes.State import State
 
 class RunningEventView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction, event: Event):
+    def __init__(self, event: Event, interaction: discord.Interaction = None):
         super().__init__(timeout=None)
         self.message = None
         self.processing_player = None  # Flag to prevent multiple simultaneous actions
         self.event = event
-        self.guild_id = interaction.guild.id
-        self.channel_id = interaction.channel.id
-        self.season_name = getattr(getattr(interaction.channel, "category", None), "name", "")
+        self.guild_id = event.guild_id if interaction is None else interaction.guild.id
+        self.channel_id = event.channel_id if interaction is None else interaction.channel.id
+        self.season_name = "" if interaction is None else getattr(getattr(interaction.channel, "category", None), "name", "")
+        
 
     def build_embed(self):
         if self.event.victory is not None:
@@ -70,6 +73,13 @@ class RunningEventView(discord.ui.View):
         await self.update_message()
         await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
         functions.channelnameclose(interaction.channel)
+
+    @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
+    async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention))
+        embed_built = await view.build_embed(interaction, interaction.user)
+        await interaction.followup.send(embed=embed_built, ephemeral=True)
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):

@@ -1,8 +1,8 @@
 import psycopg2
 import asyncio
+from db.sql_log import Sql_Log
 from urllib.parse import urlparse
 from db.sql_report import Sql_Report
-from db.sql_log import Sql_Log
 import db.db_conn as db
 from decouple import config
 

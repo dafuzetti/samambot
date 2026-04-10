@@ -1,5 +1,7 @@
 import psycopg2
 import db.db_conn as db
+import asyncio
+from db.sql_log import Sql_Log
 from db.sql_match import Sql_Match
 from db.sql_team import Sql_Team
 from db.sql_event import Sql_Event
@@ -7,8 +9,11 @@ from classes.Matches import Matches
 from classes.Players import Players
 from classes.Event import Event
 
-def update_matches_from_channel(ctx_guild, ctx_channel, winner_tag, loser_tag, game_loss) -> Event:
-    event = find_event(ctx_guild, ctx_channel)
+def update_matches_from_channel(guild, channel, user, winner_tag, loser_tag, game_loss) -> Event:
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "update_matches_from_channel", f"{winner_tag}, {loser_tag}, {game_loss}")
+    )
+    event = find_event(guild, channel)
     if event is None:
         return "Event not found.", None
     match_result = event.set_match_by_winner(winner_tag, loser_tag, game_loss)
@@ -33,9 +38,12 @@ def update_matches_from_channel(ctx_guild, ctx_channel, winner_tag, loser_tag, g
     finally:
         if conn is not None:
             conn.close()
-    return "Match updated.", read_event(ctx_guild, ctx_channel, event.event_id)
+    return "Match updated.", read_event(guild, channel, event.event_id)
 
-def update_matches(ctx_guild, ctx_channel, event_id, player, opponent, win, lose) -> Event:
+def update_matches(guild, channel, event_id, user, player, opponent, win, lose) -> Event:
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "update_matches", f"{event_id}, {player}, {opponent}, {win}, {lose}")
+    )
     conn = None
     if event_id is not None:
         try:
@@ -48,7 +56,7 @@ def update_matches(ctx_guild, ctx_channel, event_id, player, opponent, win, lose
         finally:
             if conn is not None:
                 conn.close()
-    return read_event(ctx_guild, ctx_channel, event_id)
+    return read_event(guild, channel, event_id)
 
 def read_matches(event_id=None) -> Matches:
     conn = None
@@ -183,6 +191,48 @@ def find_event(guild, channel) -> Event:
             conn.close()
     return None
 
+def get_all_active_events() -> list[Event]:
+    conn = None
+    events = []
+    try:
+        conn = db.get_connection()
+        cur = conn.cursor()
+        rows = Sql_Event.get_all_active(cur)
+        if rows is None:
+            return None
+        else:
+            for row in rows:
+                matches = read_matches(row[0])
+                events.append(Event(
+                    guild_id=int(row[1]),
+                    channel_id=int(row[2]),
+                    event_id=row[0],
+                    matches=matches,
+                    type=row[3],
+                    victory=row[4],
+                    sequence=row[5],
+                    message_id=row[6]
+                ))
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+    return events
+
+def update_event_message_id(event_id, message_id):
+    conn = None
+    try:
+        conn = db.get_connection()
+        with conn.cursor() as cur:
+            Sql_Event.update_message_id(cur, message_id, event_id)
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
 def create_event(guild, channel, category, players: Players, event_type = 2) -> Event:
     conn = None
     try:
@@ -205,6 +255,7 @@ def create_event(guild, channel, category, players: Players, event_type = 2) -> 
 
 def close_event(guild, channel, event_id) -> Event:
     conn = None
+    winner = 0
     try:
         conn = db.get_connection()
         cur = conn.cursor()

@@ -36,13 +36,33 @@ async def create_event(interaction: discord.Interaction):
     return msg, view_event
 
 async def event_message(interaction: discord.Interaction, view=None):
-    if view is not None:
-        view_event = view
-    else:
-        view_event = State.get_eventView(interaction.channel.id)
-    
+    channel = None
+    view_event = view
+    if interaction is not None:
+        channel = interaction.channel
+    if channel is None:
+        try:
+            channel = bot.get_channel(view_event.event.channel_id)
+        except(Exception) as e:
+            print(e)
+    if channel is None:
+        return None
+        
+    if view_event is None and channel is not None: 
+        view_event = State.get_eventView(channel.id)
     if view_event is None:
         return None
+
+    if channel and hasattr(channel, 'category') and channel.category:
+        view_event.season_name = channel.category.name
+
+    if view_event.message is None:
+        try:
+            if view_event.event.message_id is not None:
+                channel = bot.get_channel(view_event.event.channel_id)
+                view_event.message = await channel.fetch_message(view_event.event.message_id)
+        except:
+            view_event.message = None
 
     if view_event.message is not None:
         try:
@@ -51,13 +71,19 @@ async def event_message(interaction: discord.Interaction, view=None):
             view_event.message = None
 
     if view_event.message is None:
-        view_event.message = await interaction.channel.send(embed=view_event.build_embed(), view=view_event)
-    
-    return f"See event message: https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}/{view_event.message.id}"
+        view_event.message = await channel.send(embed=view_event.build_embed(), view=view_event)
+        if view_event and hasattr(view_event, "event") and view_event.event:
+            if hasattr(view_event.event, "event_id"):
+                db_event.update_event_message_id(view_event.event.event_id, view_event.message.id)
+        
+    State.set_eventView(channel.id, view_event)
+
+    return f"See event message: https://discord.com/channels/{channel.guild.id}/{channel.id}/{view_event.message.id}"
+
 
 async def save_result(interaction: discord.Interaction, winner: discord.User, loser: discord.User, gameloss: int = 0):
     view_event = State.get_eventView(interaction.channel.id)
-    msg, event_data = db_event.update_matches_from_channel(interaction.guild.id, interaction.channel.id, winner.mention, loser.mention, gameloss) 
+    msg, event_data = db_event.update_matches_from_channel(interaction.guild.id, interaction.channel.id, interaction.user.mention, winner.mention, loser.mention, gameloss) 
 
     if event_data is not None:
         if isinstance(view_event, RunningEventView):
@@ -74,10 +100,11 @@ def return_message(base_msg: str="", followup_msg=None):
     return base_msg
 
 @ tree.command(name='games', description='Return missing matches from all events.')
-async def clean(interaction: discord.Interaction):
+async def clean(interaction: discord.Interaction, user: discord.Member = None):
     await interaction.response.defer(ephemeral=True)
-    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention))
-    embed_built = await view.build_embed(interaction)
+    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
+                                                 user.mention if user else interaction.user.mention))
+    embed_built = await view.build_embed(interaction, user if user else interaction.user)
     await interaction.followup.send(embed=embed_built, ephemeral=True)
 
 @ tree.command(name='clean', description='If event are showing wrong info, use this command to clean the channel and reset the event.')
@@ -162,12 +189,19 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     await tree.sync()
+
+    active_events = db_event.get_all_active_events()
+
+    for event in active_events:
+        view = RunningEventView(event=event)
+        await event_message(interaction=None, view=view)
+        bot.add_view(view)
+
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
 
 # User log table 
-# my open games
 # comandos de estatistica 
 # public message when event gets closed?
 # arquivo de fechamento de event 

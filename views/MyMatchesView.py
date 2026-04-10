@@ -8,34 +8,44 @@ class MyMatchesView(discord.ui.View):
         super().__init__(timeout=None)
         self.rows = rows
 
-    async def build_embed(self, interaction):
+    async def build_embed(self, interaction, user):
         grouped = self.group_matches()
+        total_matches = 0
+        try:
+            if len(self.rows) > 0:
+                embed = discord.Embed(title=f"{user.display_name} Open Games:")
 
-        if len(self.rows) > 0:
-            embed = discord.Embed(title="Your Open Matches:")
+                for opponent, seasons in grouped.items():
+                    value = ""
+                    player_count = 0
 
-            for opponent, seasons in grouped.items():
-                value = ""
+                    for season, events in seasons.items():
+                        player_count += len(events)
+                        total_matches += len(events)
 
-                for season, events in seasons.items():
-                    events_str = ", ".join(
-                        self.get_event_channel_link(interaction.guild, season, e)
-                         for e in events)
+                        events_str = ", ".join(
+                            self.get_event_channel_link(interaction.guild, season, e)
+                            for e in events
+                        )
 
-                    name_cat="No season"
-                    if season != None:
-                        category = interaction.guild.get_channel(int(season))
-                        if isinstance(category, discord.CategoryChannel):
-                            name_cat = category.name
-                    value += f"**{name_cat}** → {events_str}\n"
+                        name_cat = "No season"
+                        if season is not None:
+                            category = interaction.guild.get_channel(int(season))
+                            if isinstance(category, discord.CategoryChannel):
+                                name_cat = category.name
 
-                embed.add_field(
-                    name=f"{self.get_display_name(interaction, opponent)}",
-                    value=value,
-                    inline=False
-                )
-        else:
-            embed = discord.Embed(title="You don't have any match to play!")
+                        value += f"↳ **{name_cat}**: {events_str}\n"
+
+                    embed.add_field(
+                        name=f"👤 **{self.get_display_name(interaction, opponent)}** ({player_count})",
+                        value=value,
+                        inline=False
+                    )
+                embed.set_footer(text=f"Total matches: {total_matches}")
+            else:
+                embed = discord.Embed(title="You don't have any match to play!")
+        except Exception:
+            embed = discord.Embed(title="User not found")
 
         return embed
     
