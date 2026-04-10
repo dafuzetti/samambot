@@ -2,10 +2,12 @@ import math
 import discord
 
 import db.db_event as db_event
+import db.db_reports as db_reports
 import functions
 
 from views.ConfirmCloseView import ConfirmCloseView
 from views.ReportResultView import ReportResultView
+from views.MyMatchesView import MyMatchesView
 
 from classes.Match import Match
 from classes.Event import Event
@@ -71,6 +73,13 @@ class RunningEventView(discord.ui.View):
         await self.update_message()
         await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
         functions.channelnameclose(interaction.channel)
+
+    @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
+    async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention))
+        embed_built = await view.build_embed(interaction, interaction.user)
+        await interaction.followup.send(embed=embed_built, ephemeral=True)
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):
