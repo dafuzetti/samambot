@@ -82,7 +82,7 @@ async def event_message(interaction: discord.Interaction, view=None):
 
 async def save_result(interaction: discord.Interaction, winner: discord.User, loser: discord.User, gameloss: int = 0):
     view_event = State.get_eventView(interaction.channel.id)
-    msg, event_data = db_event.update_matches_from_channel(interaction.guild.id, interaction.channel.id, winner.mention, loser.mention, gameloss) 
+    msg, event_data = db_event.update_matches_from_channel(interaction.guild.id, interaction.channel.id, interaction.user.mention, winner.mention, loser.mention, gameloss) 
 
     if event_data is not None:
         if isinstance(view_event, RunningEventView):
@@ -188,8 +188,7 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     await tree.sync()
-    
-    # Load persistent views for active events
+
     active_events = db_event.get_all_active_events()
 
     for event in active_events:
@@ -202,7 +201,6 @@ async def on_ready():
 bot.run(TOKEN)
 
 # User log table 
-# my open games
 # comandos de estatistica 
 # public message when event gets closed?
 # arquivo de fechamento de event 
