@@ -13,7 +13,7 @@ class MyMatchesView(discord.ui.View):
         total_matches = 0
         try:
             if len(self.rows) > 0:
-                embed = discord.Embed(title=f"{user.display_name} Open Matches:")
+                embed = discord.Embed(title=f"{user.display_name} Open Games:")
 
                 for opponent, seasons in grouped.items():
                     value = ""
