@@ -126,6 +126,7 @@ def new_event(guild, channel, event_type: int = 2):
     return event_id
 
 def move_event(guild, new_channel, event_id) -> Event:
+    #add log when function released
     conn = None
     try:
         conn = db.get_connection()
@@ -141,7 +142,11 @@ def move_event(guild, new_channel, event_id) -> Event:
             conn.close()
     return read_event(guild, new_channel, event_id)
 
-def read_event(guild, channel, event_id) -> Event:
+def read_event(guild, channel, event_id, user=None, log=False) -> Event:
+    if log and user is not None:
+        asyncio.create_task(
+            asyncio.to_thread(Sql_Log.log, guild, channel, user, "history", f"{event_id}")
+        )
     conn = None
     try:
         conn = db.get_connection()
@@ -233,7 +238,10 @@ def update_event_message_id(event_id, message_id):
         if conn is not None:
             conn.close()
 
-def create_event(guild, channel, category, players: Players, event_type = 2) -> Event:
+def create_event(guild, channel, user, category, players: Players, event_type = 2) -> Event:
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "create_event", f"{category}, {event_type}, {players}")
+    )
     conn = None
     try:
         conn = db.get_connection()
@@ -253,7 +261,10 @@ def create_event(guild, channel, category, players: Players, event_type = 2) -> 
             conn.close()
     return read_event(guild, channel, event_id)
 
-def close_event(guild, channel, event_id) -> Event:
+def close_event(guild, channel, user, event_id) -> Event:
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "close_event", f"{event_id}")
+    )
     conn = None
     winner = 0
     try:

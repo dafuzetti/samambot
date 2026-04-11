@@ -33,6 +33,9 @@ class Players:
     def __repr__(self):
         return repr(self.players)
     
+    def __str__(self):
+        return ", ".join(str(p) for p in self.players)
+    
     def generate_pairings(self):
         teams = {}
 
