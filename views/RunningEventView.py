@@ -69,7 +69,7 @@ class RunningEventView(discord.ui.View):
 
         await self.update_message()
         State.remove_event(interaction.channel.id)
-        self.event = db_event.close_event(self.guild_id, self.channel_id, self.event.event_id)
+        self.event = db_event.close_event(self.guild_id, self.channel_id, interaction.user.mention, self.event.event_id)
         await self.update_message()
         await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
         functions.channelnameclose(interaction.channel)

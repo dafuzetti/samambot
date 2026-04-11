@@ -139,6 +139,7 @@ class CreatingEventView(discord.ui.View):
             event=db_event.create_event(
                     interaction.guild_id,
                     interaction.channel_id,
+                    interaction.user.mention,
                     category_id,
                     players
                 )

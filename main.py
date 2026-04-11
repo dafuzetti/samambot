@@ -107,14 +107,8 @@ async def clean(interaction: discord.Interaction, user: discord.Member = None):
     embed_built = await view.build_embed(interaction, user if user else interaction.user)
     await interaction.followup.send(embed=embed_built, ephemeral=True)
 
-@ tree.command(name='clean', description='If event are showing wrong info, use this command to clean the channel and reset the event.')
-async def clean(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    State.clear_events()
-    await interaction.followup.send("Use /event in the same channel the events were running", ephemeral=True)
-
-@tree.command(name="event", description="Start an event")
-async def event(interaction: discord.Interaction):
+@tree.context_menu(name="New Event")
+async def event_context(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
     msg, view = await create_event(interaction)
     await interaction.followup.send(return_message(msg, await event_message(interaction, view)), ephemeral=True)
@@ -160,7 +154,7 @@ async def history(interaction: discord.Interaction, event_id: int = None):
         msg = "Full history not available yet. Use /history <event>"
         #view_hist = functions.print_history(interaction)
     else:
-        event_data = db_event.read_event(interaction.guild.id, interaction.channel.id, event_id)
+        event_data = db_event.read_event(interaction.guild.id, interaction.channel.id, event_id, user=interaction.user.mention, log=True)
         if event_data is None:
             msg = "Event not found."
         else:
