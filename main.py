@@ -195,9 +195,17 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# User log table 
+# add player as object for creating event and matches
+# remover teams a and b from creatingevent and add a list of players 
+# match using player objc, return team from players at query
+# populaet name at players 
+# handle player name 
+# remove all team A/B e criar eventos individuais
+# user nome no remove player
+
+# creating event: start event adicionar placeholders
 # comandos de estatistica 
-# public message when event gets closed?
+# public message when event gets closed? when last player reports result to ask for confirmation
 # arquivo de fechamento de event 
 # move here / liberar para eventos encerrados? bloquear por usuario?
 # Block evento sem category?
@@ -206,13 +214,9 @@ bot.run(TOKEN)
 # to no play 
 # Guardar nome das seasons?
 # close season? 
+# season report #1, #2, #3 
 # Season type team/individual
 # move read_events para dentro das comm
-# contador de eventos por guild ID?
-# remove all team A/B e criar eventos individuais
 # Deletar evento?  
 # remover classes.propriety access
-# remover teams a and b from creatingevent and add a list of players 
 # mover print para dentro das classes
-# match using player objc, return team from players at query
-# populaet name at players 

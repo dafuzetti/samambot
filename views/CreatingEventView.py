@@ -3,6 +3,7 @@ import functions
 import db.db_event as db_event
 
 from views.RunningEventView import RunningEventView
+from views.RemovePlayerView import RemovePlayerView
 from classes.Players import Players
 from classes.State import State
 
@@ -47,6 +48,9 @@ class CreatingEventView(discord.ui.View):
             self.clear_items()
         else:
             for item in self.children:
+                if item.custom_id == "drop":
+                    item.disabled = (self.total_players() == 0)
+
                 if item.custom_id == "start":
                     item.disabled = not (self.total_players() in self.num_players and len(self.team_a) == len(self.team_b))
 
@@ -100,16 +104,29 @@ class CreatingEventView(discord.ui.View):
 
         await self.update_message()
 
-    @discord.ui.button(label="Drop", style=discord.ButtonStyle.danger, custom_id="drop")
+    @discord.ui.button(label="Remove player", style=discord.ButtonStyle.danger, custom_id="drop", disabled=True)
     async def drop(self, interaction: discord.Interaction, button: discord.ui.Button):
         processing, msg = await self.is_processing()
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
-        await interaction.response.defer() 
+        
+        confirm_view = RemovePlayerView(interaction, self.team_a | self.team_b)
+        await interaction.response.send_message(
+            "Select player to be removed:", view=confirm_view, ephemeral=True
+        )
 
-        self.team_a.discard(interaction.user.mention)
-        self.team_b.discard(interaction.user.mention)
+        await confirm_view.wait()
+
+        if confirm_view.mention is None:
+            await confirm_view.confirmation_interaction.edit_original_response(content="No one was removed.", view=None)
+        else:
+            if processing:
+                await interaction.response.send_message(msg, ephemeral=True)
+                return
+            self.team_a.discard(confirm_view.mention)
+            self.team_b.discard(confirm_view.mention)
+            await confirm_view.confirmation_interaction.edit_original_response(content=f"Player {confirm_view.mention} removed.", view=None)
 
         await self.update_message()
 

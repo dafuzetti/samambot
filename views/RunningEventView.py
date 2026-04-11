@@ -53,26 +53,23 @@ class RunningEventView(discord.ui.View):
             await interaction.response.send_message(
                 "Are you sure you want to close the event?", view=confirm_view, ephemeral=True
             )
+
+            await confirm_view.wait()
+
+            if not confirm_view.confirmed:
+                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
+            else:
+                #await self.update_message()
+                State.remove_event(interaction.channel.id)
+                self.event = db_event.close_event(self.guild_id, self.channel_id, interaction.user.mention, self.event.event_id)
+                await self.update_message()
+                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
+                functions.channelnameclose(interaction.channel)
+            self.processing_player = None
         else:
             await interaction.response.send_message(
                 "Only users with 'Samambot Admin' role can close events", ephemeral=True
             )
-
-        # Wait until the user clicks Yes/No
-        await confirm_view.wait()
-
-        if not confirm_view.confirmed:
-            # User canceled
-            self.processing_player = None
-            await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
-            return
-
-        await self.update_message()
-        State.remove_event(interaction.channel.id)
-        self.event = db_event.close_event(self.guild_id, self.channel_id, interaction.user.mention, self.event.event_id)
-        await self.update_message()
-        await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
-        functions.channelnameclose(interaction.channel)
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
