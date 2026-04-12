@@ -8,6 +8,7 @@ from db.sql_event import Sql_Event
 from classes.Matches import Matches
 from classes.Players import Players
 from classes.Event import Event
+from psycopg2.extras import RealDictCursor
 
 def update_matches_from_channel(guild, channel, user, winner_tag, loser_tag, game_loss) -> Event:
     asyncio.create_task(
@@ -48,7 +49,7 @@ def update_matches(guild, channel, event_id, user, player, opponent, win, lose) 
     if event_id is not None:
         try:
             conn = db.get_connection()
-            with conn.cursor() as cur:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 Sql_Match.update_match(cur, win, lose, event_id, player, opponent)
             conn.commit()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -60,17 +61,17 @@ def update_matches(guild, channel, event_id, user, player, opponent, win, lose) 
 
 def read_matches(event_id=None) -> Matches:
     conn = None
-    rows = None
+    matches = None
     try:
         conn = db.get_connection()
         with conn.cursor() as cur:
-            rows = Sql_Match.read_matches_by_event(cur, event_id)
+            matches = Sql_Match.read_matches_by_event(cur, event_id)
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     finally:
         if conn is not None:
             conn.close()
-    return Matches(rows)
+    return matches
 
 def save_matches(event_id, matches):
     if event_id is None:

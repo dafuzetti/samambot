@@ -1,7 +1,7 @@
 class Player:
-    PLAYER = 'player'
-    TEAM = 'team'
-    PLAYER_COLUMNS = [PLAYER, TEAM]
+    COL_PLAYER = 'player'
+    COL_TEAM = 'team'
+    PLAYER_COLUMNS = [COL_PLAYER, COL_TEAM]
 
     def __init__(self, player: str, team: int, name=None):
         self.player = player
@@ -17,6 +17,17 @@ class Player:
         else:
             return f"{self.player} ({self.team})"
 
+    def set_name(self, name):
+        self.name = name
+
+    def get_name(self):
+        return self.name
+    
+    def get_team(self):
+        return self.team
+    
+    def get_player(self):
+        return self.player
     
     def get_mention(self):
         return self.player

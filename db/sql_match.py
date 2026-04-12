@@ -1,3 +1,6 @@
+from classes.Match import Match
+from classes.Matches import Matches
+
 class Sql_Match:
 
     @staticmethod
@@ -29,17 +32,31 @@ class Sql_Match:
         return cursor.rowcount
 
     @staticmethod
-    def read_matches_by_event(cursor, event_id):
-        query = """
+    def read_matches_by_event(cursor, event_id) -> Matches:
+        query = f"""
             SELECT
-                id,
-                player, 
-                opponent, 
-                COALESCE(win, 0), 
-                COALESCE(lose, 0) 
-            FROM match 
-            WHERE event=%s 
-            ORDER BY player, opponent       
+                m.id as {Match.COL_ID},
+                m.player as {Match.COL_PLAYER_A}, 
+                m.opponent as {Match.COL_PLAYER_B}, 
+                COALESCE(m.win, 0) as {Match.COL_WINS_A}, 
+                COALESCE(m.lose, 0) as {Match.COL_WINS_B},
+                t1.team as {Match.COL_TEAM_PLAYER_A},
+                t2.team as {Match.COL_TEAM_PLAYER_B}
+            FROM match m, teams t1, teams t2
+            WHERE m.event=%s 
+            AND m.event = t1.event
+            AND m.event = t2.event
+            AND m.player = t1.player
+            AND m.opponent = t2.player
+
+            ORDER BY {Match.COL_PLAYER_A}, {Match.COL_PLAYER_B}
         """
         cursor.execute(query, (event_id,))
-        return cursor.fetchall()
+
+        columns = [col[0] for col in cursor.description]
+
+        rows = [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
+        return Matches(rows)
