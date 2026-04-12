@@ -1,0 +1,16 @@
+name: Restrict merges to main
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if PR is not from test
+        if: github.head_ref != 'test'
+        run: |
+          echo "Only 'test' branch can be merged into 'main'"
+          exit 1
