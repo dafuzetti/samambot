@@ -99,13 +99,11 @@ def return_message(base_msg: str="", followup_msg=None):
         return f"{base_msg}\n{followup_msg}"
     return base_msg
 
-@ tree.command(name='games', description='Return missing matches from all events.')
-async def clean(interaction: discord.Interaction, user: discord.Member = None):
+@tree.command(name="event", description="Start an event")
+async def event(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
-    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
-                                                 user.mention if user else interaction.user.mention))
-    embed_built = await view.build_embed(interaction, user if user else interaction.user)
-    await interaction.followup.send(embed=embed_built, ephemeral=True)
+    msg, view = await create_event(interaction)
+    await interaction.followup.send(return_message(msg, await event_message(interaction, view)), ephemeral=True)
 
 @tree.context_menu(name="New Event")
 async def event_context(interaction: discord.Interaction, message: discord.Message):
@@ -144,6 +142,14 @@ async def lose(interaction: discord.Interaction, winner: discord.User, gameloss:
 async def result(interaction: discord.Interaction, winner: discord.User, loser: discord.User, gameloss: int = 0):
     await interaction.response.defer(ephemeral=True) 
     await interaction.followup.send(await save_result(interaction, winner, loser, gameloss), ephemeral=True)
+
+@ tree.command(name='games', description='Return missing matches from all events.')
+async def clean(interaction: discord.Interaction, user: discord.Member = None):
+    await interaction.response.defer(ephemeral=True)
+    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
+                                                 user.mention if user else interaction.user.mention))
+    embed_built = await view.build_embed(interaction, user if user else interaction.user)
+    await interaction.followup.send(embed=embed_built, ephemeral=True)
 
 @ tree.command(name='history', description='Event list or history details for specific events.')
 async def history(interaction: discord.Interaction, event_id: int = None):

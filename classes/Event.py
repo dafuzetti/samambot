@@ -1,4 +1,5 @@
 from classes.Matches import Matches
+from classes.Match import Match
 from classes.Players import Players
 
 class Event:
@@ -46,12 +47,12 @@ class Event:
             return None
         return self.matches.set_match_by_winner(winner_tag, loser_tag, game_loss)
     
-    def get_match(self, match_id):
+    def get_match(self, match_id) -> Match:
         if self.matches is None:
             return None
         return self.matches.get_match(match_id)
 
-    def get_matches(self, player_tag=None):
+    def get_matches(self, player_tag=None) -> list[Match]:
         if self.matches is None:
             return []
         return self.matches.get_matches(player_tag)

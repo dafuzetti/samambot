@@ -92,7 +92,8 @@ class RunningEventView(discord.ui.View):
                 if not in_event:
                     in_event = match.hava_player(player)
                 if not match.have_names():
-                    match.set_names(await functions.get_player_name(interaction, match.player_a), await functions.get_player_name(interaction, match.player_b))
+                    match.set_names(await functions.get_player_name(interaction, match.get_player().get_mention()), 
+                                    await functions.get_player_name(interaction, match.get_opponent().get_mention()))
 
         if in_event:
             confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
@@ -131,15 +132,15 @@ class RunningEventView(discord.ui.View):
                 if str(match.wins_b) == '2':
                     winB = winB + 1
                 if pos == toadd:
-                    playersA = playersA + str(match.player_a)
-                    playersB = playersB + str(match.player_b)
+                    playersA = playersA + str(match.get_player().get_name())
+                    playersB = playersB + str(match.get_opponent().get_name())
                     toadd = toadd + nrp + 1
                 if match.wins_a == 0 and match.wins_b == 0:
-                    matches_desc = matches_desc + str(match.player_a) + \
-                        ' - ' + str(match.player_b) + '\n'
+                    matches_desc = matches_desc + str(match.get_player().get_name()) + \
+                        ' - ' + str(match.get_opponent().get_name()) + '\n'
                 else:
-                    matches_desc = matches_desc + str(match.player_a) + ' ' + str(match.wins_a) + \
-                        '-' + str(match.wins_b) + ' ' + str(match.player_b) + '\n'
+                    matches_desc = matches_desc + str(match.get_player().get_name()) + ' ' + str(match.wins_a) + \
+                        '-' + str(match.wins_b) + ' ' + str(match.get_opponent().get_name()) + '\n'
 
         emjA = ''
         emjB = ''
