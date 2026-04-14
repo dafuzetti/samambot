@@ -1,17 +1,20 @@
 import discord
+from classes.Players import Players
+from classes.Player import Player
 
 class RemovePlayerView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction, players):
+    def __init__(self, interaction: discord.Interaction, players: Players):
         super().__init__(timeout=30)  # optional timeout
         self.mention = None
         self.confirmation_interaction = interaction
 
-        for p in players:
-            button = discord.ui.Button(label=p, style=discord.ButtonStyle.red)
+        for ploop in players.get_players():
+            p:Player = ploop
+            button = discord.ui.Button(label=p.get_name(), style=discord.ButtonStyle.red)
 
             async def callback(interaction, player=p):
                 await interaction.response.defer()
-                self.mention = p
+                self.mention = player.get_mention()
                 self.stop()
             
             button.callback = callback

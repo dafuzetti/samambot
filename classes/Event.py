@@ -42,7 +42,7 @@ class Event:
             return self.event_id
         return self.sequence
     
-    def set_match_by_winner(self, winner_tag, loser_tag, game_loss):
+    def set_match_by_winner(self, winner_tag, loser_tag, game_loss) -> Match:
         if self.matches is None:
             return None
         return self.matches.set_match_by_winner(winner_tag, loser_tag, game_loss)

@@ -5,6 +5,7 @@ from db.sql_log import Sql_Log
 from db.sql_match import Sql_Match
 from db.sql_team import Sql_Team
 from db.sql_event import Sql_Event
+from classes.Match import Match
 from classes.Matches import Matches
 from classes.Players import Players
 from classes.Event import Event
@@ -17,7 +18,7 @@ def update_matches_from_channel(guild, channel, user, winner_tag, loser_tag, gam
     event = find_event(guild, channel)
     if event is None:
         return "Event not found.", None
-    match_result = event.set_match_by_winner(winner_tag, loser_tag, game_loss)
+    match_result:Match = event.set_match_by_winner(winner_tag, loser_tag, game_loss)
     if match_result is None:
         return "Match not found.", None
 
@@ -248,9 +249,9 @@ def create_event(guild, channel, user, category, players: Players, event_type = 
         conn = db.get_connection()
         with conn.cursor() as cur:
             event_id = Sql_Event.create_event(cur, guild, channel, category, event_type)
-            for p in players.get_team_tags(1):
+            for p in players.get_players_tags(1):
                 Sql_Team.add_player_to_team(cur, event_id, p, 1)
-            for p in players.get_team_tags(2):
+            for p in players.get_players_tags(2):
                 Sql_Team.add_player_to_team(cur, event_id, p, 2)
             for pair in players.generate_pairings():
                 Sql_Match.create_match(cur, event_id, pair[0], pair[1])

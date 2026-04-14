@@ -11,9 +11,9 @@ class Match:
 
     def __init__(self, id: int, player_a: str, team_a: int, player_b: str, team_b: int, wins_a: int = 0 , wins_b: int = 0):
         self.id = id
-        self.player_a = Player(player=player_a, team=team_a)
+        self.player_a = Player(player_tag=player_a, team=team_a)
         self.wins_a = wins_a
-        self.player_b = Player(player=player_b, team=team_b)
+        self.player_b = Player(player_tag=player_b, team=team_b)
         self.wins_b = wins_b
 
     def set_result(self, wins_a, wins_b):
