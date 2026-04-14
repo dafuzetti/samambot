@@ -201,13 +201,9 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# add player as object for creating event and matches
-# remover teams a and b from creatingevent and add a list of players 
-# match using player objc, return team from players at query
 # populaet name at players 
 # handle player name 
 # remove all team A/B e criar eventos individuais
-# user nome no remove player
 
 # creating event: start event adicionar placeholders
 # comandos de estatistica 

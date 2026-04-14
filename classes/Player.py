@@ -3,9 +3,9 @@ class Player:
     COL_TEAM = 'team'
     PLAYER_COLUMNS = [COL_PLAYER, COL_TEAM]
 
-    def __init__(self, player: str, team: int, name=None):
-        self.player = player
-        self.name = name if name else player
+    def __init__(self, player_tag: str, team: int, name=None):
+        self.player = player_tag
+        self.name = name if name else player_tag
         self.team = team
 
     def __repr__(self):
@@ -20,13 +20,13 @@ class Player:
     def set_name(self, name):
         self.name = name
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.name
     
     def get_team(self):
         return self.team
     
-    def get_player(self):
+    def get_tag(self):
         return self.player
     
     def get_mention(self):
