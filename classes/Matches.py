@@ -3,7 +3,7 @@ from classes.Match import Match
 class Matches:
     def __init__(self, rows=None):
         self.matches = [
-            Match(r[0], r[1], r[2], r[3], r[4])
+            Match(**r)
             for r in rows or []
         ]
 
@@ -13,15 +13,15 @@ class Matches:
     def len(self):
         return len(self.matches)
 
-    def get_matches(self, player_id=None):
+    def get_matches(self, player_id=None) -> list[Match]:
         if player_id is None:
             return self.matches
-        return [m for m in self.matches if m.get_player() == player_id or m.get_opponent() == player_id]
+        return [m for m in self.matches if m.get_player().get_mention() == player_id or m.get_opponent().get_mention() == player_id]
 
     def set_matches(self, matches):
         self.matches = matches
 
-    def get_match(self, match_id):
+    def get_match(self, match_id) -> Match:
         for m in self.matches:
             if m.id == match_id:
                 return m

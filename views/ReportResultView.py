@@ -1,6 +1,4 @@
-
 import discord
-
 from classes.State import State
 from classes.Match import Match
 from classes.Event import Event
@@ -9,22 +7,19 @@ from db import db_event
 class ReportResultView(discord.ui.View, Event):
     def __init__(self, interaction: discord.Interaction = None, event_data: Event = None):
         super().__init__(timeout=60)
-        for m in event_data.get_matches(interaction.user.mention):
-            if isinstance(m, Match):
-                match_data: Match = m
+        for match_data in event_data.get_matches(interaction.user.mention):
+            label = match_data.get_vs_label(interaction.user.mention)
+            button = discord.ui.Button(label=label)
 
-                label = match_data.get_vs_label(interaction.user.mention)
-                button = discord.ui.Button(label=label)
+            async def callback(interaction: discord.Interaction, match=match_data):
+                view = ResultSelectView(match, event_data)
+                await interaction.response.edit_message(
+                    content=f"Selected: {match}",
+                    view=view
+                )
 
-                async def callback(interaction, match=m):
-                    view = ResultSelectView(match, event_data)
-                    await interaction.response.edit_message(
-                        content=f"Selected: {match}",
-                        view=view
-                    )
-
-                button.callback = callback
-                self.add_item(button)
+            button.callback = callback
+            self.add_item(button)
 
 
 class ResultSelectView(discord.ui.View, Event):
@@ -48,7 +43,7 @@ class ResultSelectView(discord.ui.View, Event):
         self.add_item(won_button)
         self.add_item(lost_button)
 
-    async def handle_result(self, interaction, won: bool):
+    async def handle_result(self, interaction: discord.Interaction, won: bool):
         view = ScoreView(self.match, self.event_data, won)
         await interaction.response.edit_message(
             content=f"Result saved: {'You won' if won else 'You lost'}",
@@ -80,19 +75,17 @@ class ScoreView(discord.ui.View):
             if self.match.get_player() == interaction.user.mention:
                 win = 2 if user_won else (1 if match_lost else 0)
                 loss = (1 if match_lost else 0) if user_won else 2
-                vs_text = f"{win}-{loss}" if user_won else f"{loss}-{win}"
             else:
                 loss = 2 if user_won else (1 if match_lost else 0)
                 win = (1 if match_lost else 0) if user_won else 2
             
             event_data = db_event.update_matches(interaction.guild.id, interaction.channel.id, self.event_data.event_id, interaction.user.mention, 
-                                                 self.match.get_player(), self.match.get_opponent(), win, loss)
+                                                 self.match.get_player().get_mention(), self.match.get_opponent().get_mention(), win, loss)
             original_view = State.get_eventView(interaction.channel.id)
-            #quebrando quando inicia o servidor, apos /event functiona normal
             original_view.event = event_data
             await original_view.update_message()
             await interaction.edit_original_response(
-                content=f"{'You won' if user_won else 'You lost'}, saved: \nMatch: {self.match.get_player()} {win}-{loss} {self.match.get_opponent()}",
+                content=f"{'You won' if user_won else 'You lost'}, saved: \nMatch: {event_data.get_match(self.match.get_id())}",
                 view=None
             )
 

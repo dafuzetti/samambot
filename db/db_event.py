@@ -5,9 +5,11 @@ from db.sql_log import Sql_Log
 from db.sql_match import Sql_Match
 from db.sql_team import Sql_Team
 from db.sql_event import Sql_Event
+from classes.Match import Match
 from classes.Matches import Matches
 from classes.Players import Players
 from classes.Event import Event
+from psycopg2.extras import RealDictCursor
 
 def update_matches_from_channel(guild, channel, user, winner_tag, loser_tag, game_loss) -> Event:
     asyncio.create_task(
@@ -16,7 +18,7 @@ def update_matches_from_channel(guild, channel, user, winner_tag, loser_tag, gam
     event = find_event(guild, channel)
     if event is None:
         return "Event not found.", None
-    match_result = event.set_match_by_winner(winner_tag, loser_tag, game_loss)
+    match_result:Match = event.set_match_by_winner(winner_tag, loser_tag, game_loss)
     if match_result is None:
         return "Match not found.", None
 
@@ -48,7 +50,7 @@ def update_matches(guild, channel, event_id, user, player, opponent, win, lose) 
     if event_id is not None:
         try:
             conn = db.get_connection()
-            with conn.cursor() as cur:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 Sql_Match.update_match(cur, win, lose, event_id, player, opponent)
             conn.commit()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -60,17 +62,17 @@ def update_matches(guild, channel, event_id, user, player, opponent, win, lose) 
 
 def read_matches(event_id=None) -> Matches:
     conn = None
-    rows = None
+    matches = None
     try:
         conn = db.get_connection()
         with conn.cursor() as cur:
-            rows = Sql_Match.read_matches_by_event(cur, event_id)
+            matches = Sql_Match.read_matches_by_event(cur, event_id)
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     finally:
         if conn is not None:
             conn.close()
-    return Matches(rows)
+    return matches
 
 def save_matches(event_id, matches):
     if event_id is None:
@@ -126,6 +128,7 @@ def new_event(guild, channel, event_type: int = 2):
     return event_id
 
 def move_event(guild, new_channel, event_id) -> Event:
+    #add log when function released
     conn = None
     try:
         conn = db.get_connection()
@@ -141,7 +144,11 @@ def move_event(guild, new_channel, event_id) -> Event:
             conn.close()
     return read_event(guild, new_channel, event_id)
 
-def read_event(guild, channel, event_id) -> Event:
+def read_event(guild, channel, event_id, user=None, log=False) -> Event:
+    if log and user is not None:
+        asyncio.create_task(
+            asyncio.to_thread(Sql_Log.log, guild, channel, user, "history", f"{event_id}")
+        )
     conn = None
     try:
         conn = db.get_connection()
@@ -233,15 +240,18 @@ def update_event_message_id(event_id, message_id):
         if conn is not None:
             conn.close()
 
-def create_event(guild, channel, category, players: Players, event_type = 2) -> Event:
+def create_event(guild, channel, user, category, players: Players, event_type = 2) -> Event:
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "create_event", f"{category}, {event_type}, {players}")
+    )
     conn = None
     try:
         conn = db.get_connection()
         with conn.cursor() as cur:
             event_id = Sql_Event.create_event(cur, guild, channel, category, event_type)
-            for p in players.get_team_tags(1):
+            for p in players.get_players_tags(1):
                 Sql_Team.add_player_to_team(cur, event_id, p, 1)
-            for p in players.get_team_tags(2):
+            for p in players.get_players_tags(2):
                 Sql_Team.add_player_to_team(cur, event_id, p, 2)
             for pair in players.generate_pairings():
                 Sql_Match.create_match(cur, event_id, pair[0], pair[1])
@@ -253,7 +263,10 @@ def create_event(guild, channel, category, players: Players, event_type = 2) -> 
             conn.close()
     return read_event(guild, channel, event_id)
 
-def close_event(guild, channel, event_id) -> Event:
+def close_event(guild, channel, user, event_id) -> Event:
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "close_event", f"{event_id}")
+    )
     conn = None
     winner = 0
     try:

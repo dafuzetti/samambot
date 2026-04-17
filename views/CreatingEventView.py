@@ -3,42 +3,34 @@ import functions
 import db.db_event as db_event
 
 from views.RunningEventView import RunningEventView
+from views.RemovePlayerView import RemovePlayerView
 from classes.Players import Players
 from classes.State import State
 
 class CreatingEventView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.team_a = set()
-        self.team_b = set()
+        self.players: Players = Players()
         self.message = None
         self.processing_player = None  # Flag to prevent multiple simultaneous starts
-        self.num_players = [4,6,8]  # Allowed player counts for starting the event
 
     def total_players(self):
-        return len(self.team_a) + len(self.team_b)
+        return self.players.len()
 
     def add_player(self, player: discord.User, team_a: bool = True):
-        if self.total_players() >= 8 or player is None:
-            return
-        if team_a:
-            if(len(self.team_a)< 4):  # Assuming a maximum of 4 players per team
-                self.team_b.discard(player.mention)
-                self.team_a.add(player.mention)
-        else:
-            if(len(self.team_b) < 4):  # Assuming a maximum of 4 players per team
-                self.team_a.discard(player.mention)
-                self.team_b.add(player.mention)
+        self.players.add_player(player_tag=player.mention, team=1 if team_a else 2, name=player.display_name)
 
     def build_embed(self):
         embed = discord.Embed(title="New Event Lobby")
 
-        team_a = "\n".join(u for u in self.team_a) or "—"
-        team_b = "\n".join(u for u in self.team_b) or "—"
+        list_a = self.players.get_players_names(1)
+        list_b = self.players.get_players_names(2)
+
+        team_a = "\n".join(list_a) if list_a else "-"
+        team_b = "\n".join(list_b) if list_b else "-"
 
         embed.add_field(name="Team A", value=team_a, inline=True)
         embed.add_field(name="Team B", value=team_b, inline=True)
-        embed.set_footer(text=f"Total players: {self.total_players()}")
 
         return embed
 
@@ -47,14 +39,17 @@ class CreatingEventView(discord.ui.View):
             self.clear_items()
         else:
             for item in self.children:
+                if item.custom_id == "drop":
+                    item.disabled = (self.total_players() == 0)
+
                 if item.custom_id == "start":
-                    item.disabled = not (self.total_players() in self.num_players and len(self.team_a) == len(self.team_b))
+                    item.disabled = not self.players.get_ready()
 
                 if item.custom_id == "team_a":
-                    item.label = f"Join Team A ({len(self.team_a)})"
+                    item.label = f"Join Team A ({len(self.players.get_players_tags(1))})"
 
                 if item.custom_id == "team_b":
-                    item.label = f"Join Team B ({len(self.team_b)})"
+                    item.label = f"Join Team B ({len(self.players.get_players_tags(2))})"
 
         if self.message is not None:
             await self.message.edit(embed=self.build_embed(), view=self)
@@ -86,30 +81,40 @@ class CreatingEventView(discord.ui.View):
         
         # Only for testing purposes
         if interaction.guild.id == 1184558595602391121 and interaction.user.id == 723638398312513586: 
-            self.team_a = set()
-            self.team_b = set()
-            user: discord.User = interaction.guild.get_member(690644525177110561)
-            self.add_player(user, team_a=True)
-            user = interaction.guild.get_member(866339429273305098)
-            self.add_player(user, team_a=True)
-            user = interaction.guild.get_member(1184558521459671110)
-            self.add_player(user, team_a=False)
+            self.add_player(interaction.guild.get_member(690644525177110561), team_a=True)
+            self.add_player(interaction.guild.get_member(866339429273305098), team_a=True)
+            self.add_player(interaction.guild.get_member(1184558521459671110), team_a=False)
         # End of testing purposes
 
         self.add_player(interaction.user, team_a=False)
 
         await self.update_message()
 
-    @discord.ui.button(label="Drop", style=discord.ButtonStyle.danger, custom_id="drop")
+    @discord.ui.button(label="Remove player", style=discord.ButtonStyle.danger, custom_id="drop", disabled=True)
     async def drop(self, interaction: discord.Interaction, button: discord.ui.Button):
         processing, msg = await self.is_processing()
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
-        await interaction.response.defer() 
+        if self.players.len() == 0:
+            await interaction.response.send_message("No players to be removed.", ephemeral=True)
+            return
 
-        self.team_a.discard(interaction.user.mention)
-        self.team_b.discard(interaction.user.mention)
+        confirm_view = RemovePlayerView(interaction, self.players)
+        await interaction.response.send_message(
+            "Select player to be removed:", view=confirm_view, ephemeral=True
+        )
+
+        await confirm_view.wait()
+
+        if confirm_view.mention is None:
+            await confirm_view.confirmation_interaction.edit_original_response(content="No one was removed.", view=None)
+        else:
+            if processing:
+                await interaction.response.send_message(msg, ephemeral=True)
+                return
+            self.players.remove_player_tag(confirm_view.mention)
+            await confirm_view.confirmation_interaction.edit_original_response(content=f"Player {confirm_view.mention} removed.", view=None)
 
         await self.update_message()
 
@@ -119,7 +124,7 @@ class CreatingEventView(discord.ui.View):
         processing, msg = await self.is_processing()
         if processing:
             print_msg = msg
-        elif self.total_players() not in self.num_players or len(self.team_a) != len(self.team_b):
+        elif not self.players.get_ready():
             print_msg = "You need 4, 6 or 8 players with balanced teams to start the event."
         else:
             self.processing_player = interaction.user.mention
@@ -131,16 +136,15 @@ class CreatingEventView(discord.ui.View):
 
         if start:
             await self.update_message(clean_btns=True) 
-            players = Players()
-            players.add_teams(self.team_a, self.team_b)
             category_id = None
             if interaction.channel.category is not None:
                 category_id = interaction.channel.category_id
             event=db_event.create_event(
                     interaction.guild_id,
                     interaction.channel_id,
+                    interaction.user.mention,
                     category_id,
-                    players
+                    self.players
                 )
             new_view = RunningEventView(
                 interaction=interaction,

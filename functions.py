@@ -1,12 +1,15 @@
 import asyncio
+import re
 
 def channelnameopen(channel, event_name):
+    newname = None
     if '-_' in channel.name:
         base = get_base_channel_name(channel)
         newname = f"{base}-_{event_name}_"
     update_channelname(channel, newname)
 
 def channelnameclose(channel):
+    newname = None
     if '-_' in channel.name:
         base = get_base_channel_name(channel)
         newname = f"{base}-__"
@@ -18,10 +21,8 @@ def get_base_channel_name(channel):
     return channel.name
 
 def update_channelname(channel, name):
-    if channel.name != name:
+    if name is not None and channel.name != name:
         asyncio.create_task(channel.edit(name=name))
-
-import re
 
 async def get_player_name(interaction, player: str) -> str:
     match = re.search(r"<@!?(\d+)>", player)

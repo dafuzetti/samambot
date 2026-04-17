@@ -53,26 +53,23 @@ class RunningEventView(discord.ui.View):
             await interaction.response.send_message(
                 "Are you sure you want to close the event?", view=confirm_view, ephemeral=True
             )
+
+            await confirm_view.wait()
+
+            if not confirm_view.confirmed:
+                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
+            else:
+                #await self.update_message()
+                State.remove_event(interaction.channel.id)
+                self.event = db_event.close_event(self.guild_id, self.channel_id, interaction.user.mention, self.event.event_id)
+                await self.update_message()
+                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
+                functions.channelnameclose(interaction.channel)
+            self.processing_player = None
         else:
             await interaction.response.send_message(
                 "Only users with 'Samambot Admin' role can close events", ephemeral=True
             )
-
-        # Wait until the user clicks Yes/No
-        await confirm_view.wait()
-
-        if not confirm_view.confirmed:
-            # User canceled
-            self.processing_player = None
-            await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
-            return
-
-        await self.update_message()
-        State.remove_event(interaction.channel.id)
-        self.event = db_event.close_event(self.guild_id, self.channel_id, self.event.event_id)
-        await self.update_message()
-        await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
-        functions.channelnameclose(interaction.channel)
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -95,7 +92,8 @@ class RunningEventView(discord.ui.View):
                 if not in_event:
                     in_event = match.hava_player(player)
                 if not match.have_names():
-                    match.set_names(await functions.get_player_name(interaction, match.player_a), await functions.get_player_name(interaction, match.player_b))
+                    match.set_names(await functions.get_player_name(interaction, match.get_player().get_mention()), 
+                                    await functions.get_player_name(interaction, match.get_opponent().get_mention()))
 
         if in_event:
             confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
@@ -134,15 +132,15 @@ class RunningEventView(discord.ui.View):
                 if str(match.wins_b) == '2':
                     winB = winB + 1
                 if pos == toadd:
-                    playersA = playersA + str(match.player_a)
-                    playersB = playersB + str(match.player_b)
+                    playersA = playersA + str(match.get_player().get_name())
+                    playersB = playersB + str(match.get_opponent().get_name())
                     toadd = toadd + nrp + 1
                 if match.wins_a == 0 and match.wins_b == 0:
-                    matches_desc = matches_desc + str(match.player_a) + \
-                        ' - ' + str(match.player_b) + '\n'
+                    matches_desc = matches_desc + str(match.get_player().get_name()) + \
+                        ' - ' + str(match.get_opponent().get_name()) + '\n'
                 else:
-                    matches_desc = matches_desc + str(match.player_a) + ' ' + str(match.wins_a) + \
-                        '-' + str(match.wins_b) + ' ' + str(match.player_b) + '\n'
+                    matches_desc = matches_desc + str(match.get_player().get_name()) + ' ' + str(match.wins_a) + \
+                        '-' + str(match.wins_b) + ' ' + str(match.get_opponent().get_name()) + '\n'
 
         emjA = ''
         emjB = ''

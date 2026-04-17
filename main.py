@@ -99,22 +99,14 @@ def return_message(base_msg: str="", followup_msg=None):
         return f"{base_msg}\n{followup_msg}"
     return base_msg
 
-@ tree.command(name='games', description='Return missing matches from all events.')
-async def clean(interaction: discord.Interaction, user: discord.Member = None):
-    await interaction.response.defer(ephemeral=True)
-    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
-                                                 user.mention if user else interaction.user.mention))
-    embed_built = await view.build_embed(interaction, user if user else interaction.user)
-    await interaction.followup.send(embed=embed_built, ephemeral=True)
-
-@ tree.command(name='clean', description='If event are showing wrong info, use this command to clean the channel and reset the event.')
-async def clean(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    State.clear_events()
-    await interaction.followup.send("Use /event in the same channel the events were running", ephemeral=True)
-
 @tree.command(name="event", description="Start an event")
 async def event(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    msg, view = await create_event(interaction)
+    await interaction.followup.send(return_message(msg, await event_message(interaction, view)), ephemeral=True)
+
+@tree.context_menu(name="New Event")
+async def event_context(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
     msg, view = await create_event(interaction)
     await interaction.followup.send(return_message(msg, await event_message(interaction, view)), ephemeral=True)
@@ -151,6 +143,14 @@ async def result(interaction: discord.Interaction, winner: discord.User, loser: 
     await interaction.response.defer(ephemeral=True) 
     await interaction.followup.send(await save_result(interaction, winner, loser, gameloss), ephemeral=True)
 
+@ tree.command(name='games', description='Return missing matches from all events.')
+async def clean(interaction: discord.Interaction, user: discord.Member = None):
+    await interaction.response.defer(ephemeral=True)
+    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
+                                                 user.mention if user else interaction.user.mention))
+    embed_built = await view.build_embed(interaction, user if user else interaction.user)
+    await interaction.followup.send(embed=embed_built, ephemeral=True)
+
 @ tree.command(name='history', description='Event list or history details for specific events.')
 async def history(interaction: discord.Interaction, event_id: int = None):
     await interaction.response.defer(ephemeral=True)
@@ -160,7 +160,7 @@ async def history(interaction: discord.Interaction, event_id: int = None):
         msg = "Full history not available yet. Use /history <event>"
         #view_hist = functions.print_history(interaction)
     else:
-        event_data = db_event.read_event(interaction.guild.id, interaction.channel.id, event_id)
+        event_data = db_event.read_event(interaction.guild.id, interaction.channel.id, event_id, user=interaction.user.mention, log=True)
         if event_data is None:
             msg = "Event not found."
         else:
@@ -201,9 +201,13 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# User log table 
+# populaet name at players 
+# handle player name 
+# remove all team A/B e criar eventos individuais
+
+# creating event: start event adicionar placeholders
 # comandos de estatistica 
-# public message when event gets closed?
+# public message when event gets closed? when last player reports result to ask for confirmation
 # arquivo de fechamento de event 
 # move here / liberar para eventos encerrados? bloquear por usuario?
 # Block evento sem category?
@@ -212,13 +216,9 @@ bot.run(TOKEN)
 # to no play 
 # Guardar nome das seasons?
 # close season? 
+# season report #1, #2, #3 
 # Season type team/individual
 # move read_events para dentro das comm
-# contador de eventos por guild ID?
-# remove all team A/B e criar eventos individuais
 # Deletar evento?  
 # remover classes.propriety access
-# remover teams a and b from creatingevent and add a list of players 
 # mover print para dentro das classes
-# match using player objc, return team from players at query
-# populaet name at players 
