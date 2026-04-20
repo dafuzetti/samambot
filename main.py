@@ -201,6 +201,8 @@ async def on_ready():
 
 bot.run(TOKEN)
 
+# cancel report result
+# my open games event summary 
 # populaet name at players 
 # handle player name 
 # remove all team A/B e criar eventos individuais
