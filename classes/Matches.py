@@ -33,8 +33,8 @@ class Matches:
     def set_match_by_winner(self, winner_tag, loser_tag, game_loss) -> Match:
         for m in self.matches:
             if isinstance(m, Match):
-                if {m.get_player(), m.get_opponent()} == {winner_tag, loser_tag}:
-                    if m.get_player() == winner_tag:
+                if {m.get_player().get_mention(), m.get_opponent().get_mention()} == {winner_tag, loser_tag}:
+                    if m.get_player().get_mention() == winner_tag:
                         m.set_wins(2)
                         m.set_losses(0 if game_loss == 0 else 1)
                     else:
