@@ -31,8 +31,8 @@ def update_matches_from_channel(guild, channel, user, winner_tag, loser_tag, gam
                 match_result.get_wins(),
                 match_result.get_losses(),
                 event.event_id,
-                match_result.get_player(),
-                match_result.get_opponent()
+                match_result.get_player().get_mention(),
+                match_result.get_opponent().get_mention()
             )
         conn.commit()
     except (Exception, psycopg2.DatabaseError) as error:
