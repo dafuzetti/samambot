@@ -72,10 +72,10 @@ class ScoreView(discord.ui.View):
                 item.disabled = True
             await interaction.edit_original_response(view=None, content="Saving result...")
             
-            if self.match.get_player() == interaction.user.mention:
+            if self.match.get_player().get_mention() == interaction.user.mention:
                 win = 2 if user_won else (1 if match_lost else 0)
                 loss = (1 if match_lost else 0) if user_won else 2
-            else:
+            elif self.match.get_opponent().get_mention() == interaction.user.mention:
                 loss = 2 if user_won else (1 if match_lost else 0)
                 win = (1 if match_lost else 0) if user_won else 2
             
