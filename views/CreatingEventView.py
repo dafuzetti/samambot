@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 import functions
 import db.db_event as db_event
@@ -19,6 +21,11 @@ class CreatingEventView(discord.ui.View):
 
     def add_player(self, player: discord.User, team_a: bool = True):
         self.players.add_player(player_tag=player.mention, team=1 if team_a else 2, name=player.display_name)
+
+    # Needs to be called from the remove player view
+    async def remove_player(self, player_mention):
+        self.players.remove_player_tag(player_mention)
+        await self.update_message()
 
     def build_embed(self):
         embed = discord.Embed(title="New Event Lobby")
@@ -54,14 +61,14 @@ class CreatingEventView(discord.ui.View):
         if self.message is not None:
             await self.message.edit(embed=self.build_embed(), view=self)
     
-    async def is_processing(self):
+    def is_processing(self):
         if self.processing_player:
             return True, f"⏳ Event already started by: {self.processing_player}"
         return False, None
 
     @discord.ui.button(label="Join Team A (0)", style=discord.ButtonStyle.green, custom_id="team_a")
     async def join_a(self, interaction: discord.Interaction, button: discord.ui.Button):
-        processing, msg = await self.is_processing()
+        processing, msg = self.is_processing()
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
@@ -73,7 +80,7 @@ class CreatingEventView(discord.ui.View):
 
     @discord.ui.button(label="Join Team B (0)", style=discord.ButtonStyle.blurple, custom_id="team_b")
     async def join_b(self, interaction: discord.Interaction, button: discord.ui.Button):
-        processing, msg = await self.is_processing()
+        processing, msg = self.is_processing()
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
@@ -92,36 +99,32 @@ class CreatingEventView(discord.ui.View):
 
     @discord.ui.button(label="Remove player", style=discord.ButtonStyle.danger, custom_id="drop", disabled=True)
     async def drop(self, interaction: discord.Interaction, button: discord.ui.Button):
-        processing, msg = await self.is_processing()
+        processing, msg = self.is_processing()
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
-        if self.players.len() == 0:
-            await interaction.response.send_message("No players to be removed.", ephemeral=True)
-            return
 
-        confirm_view = RemovePlayerView(interaction, self.players)
-        await interaction.response.send_message(
-            "Select player to be removed:", view=confirm_view, ephemeral=True
-        )
+        await interaction.response.defer(ephemeral=True)
 
-        await confirm_view.wait()
-
-        if confirm_view.mention is None:
-            await confirm_view.confirmation_interaction.edit_original_response(content="No one was removed.", view=None)
+        if self.players.len() > 0:
+            confirm_view = RemovePlayerView(self.players)
+            confirm_view.message = await interaction.followup.send(
+                "Select player to be removed:", view=confirm_view, ephemeral=True
+            )
         else:
-            if processing:
-                await interaction.response.send_message(msg, ephemeral=True)
-                return
-            self.players.remove_player_tag(confirm_view.mention)
-            await confirm_view.confirmation_interaction.edit_original_response(content=f"Player {confirm_view.mention} removed.", view=None)
+            msg_no_players = await interaction.followup.send(
+                "No players to be removed.", ephemeral=True
+            )
+            await asyncio.sleep(30)
+            await msg_no_players.delete()
 
-        await self.update_message()
+
+        # need to update from the internal event? await self.update_message()
 
     @discord.ui.button(label="Start Event", style=discord.ButtonStyle.red, custom_id="start", disabled=True)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
         start = False
-        processing, msg = await self.is_processing()
+        processing, msg = self.is_processing()
         if processing:
             print_msg = msg
         elif not self.players.get_ready():

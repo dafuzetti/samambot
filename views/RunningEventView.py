@@ -1,3 +1,4 @@
+import asyncio
 import math
 import discord
 
@@ -86,28 +87,35 @@ class RunningEventView(discord.ui.View):
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
+        
+        await interaction.response.defer(ephemeral=True)
+
         for m in self.event.get_matches():
             if isinstance(m, Match):
                 match: Match = m
                 if not in_event:
-                    in_event = match.hava_player(player)
+                    in_event = match.have_player(player)
                 if not match.have_names():
                     match.set_names(await functions.get_player_name(interaction, match.get_player().get_mention()), 
                                     await functions.get_player_name(interaction, match.get_opponent().get_mention()))
-
+        
         if in_event:
             confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
-            await interaction.response.send_message(
+            confirm_view.message = await interaction.followup.send(
                 "Select your opponent:",
                 view=confirm_view,
-                ephemeral=True
+                ephemeral=True,
+                wait=True  # Makes it return the Message object
             )
         else:
-            await interaction.response.send_message(
+            msg_player_not_in = await interaction.followup.send(
                 "You are not in the event.\n " \
                 "Report a match for other players by using /result",
-                ephemeral=True
+                ephemeral=True,
+                wait=True
             )
+            await asyncio.sleep(30)
+            await msg_player_not_in.delete()
 
     def print_event_started(self):
         list = self.event.get_matches()
