@@ -25,7 +25,7 @@ class Match:
             return False
         return True
 
-    def hava_player(self, player_tag):
+    def have_player(self, player_tag):
         return player_tag == self.player_a.get_mention() or player_tag == self.player_b.get_mention()
 
     def get_player(self) -> Player:

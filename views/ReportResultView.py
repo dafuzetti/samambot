@@ -1,11 +1,11 @@
 import discord
-from . import BaseView
+from views.BaseView import BaseTempView
 from classes.State import State
 from classes.Match import Match
 from classes.Event import Event
 from db import db_event
 
-class ReportResultView(BaseView.BaseTempView):
+class ReportResultView(BaseTempView):
     def __init__(self, interaction: discord.Interaction = None, event_data: Event = None, message=None):
         super().__init__(message=message)
 
@@ -24,7 +24,7 @@ class ReportResultView(BaseView.BaseTempView):
             self.add_item(button)
 
 
-class ResultSelectView(BaseView.BaseTempView):
+class ResultSelectView(BaseTempView):
     def __init__(self, match: Match, event_data: Event, message=None):
         super().__init__(message=message)
         self.match = match
@@ -43,7 +43,7 @@ class ResultSelectView(BaseView.BaseTempView):
 
 
 
-class ScoreView(BaseView.BaseTempView):
+class ScoreView(BaseTempView):
     def __init__(self, match: Match, event_data: Event, user_won: bool, message=None):
         super().__init__(message=message)
         self.match = match

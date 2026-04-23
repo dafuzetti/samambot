@@ -39,7 +39,7 @@ class BaseTempView(BaseView):
         self.stop()
         await self.on_timeout()
 
-    async def no_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def no_callback(self, interaction: discord.Interaction):
         await self.dismiss(interaction)
 
 class BasePermView(BaseView):

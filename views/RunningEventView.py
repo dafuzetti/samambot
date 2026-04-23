@@ -94,7 +94,7 @@ class RunningEventView(discord.ui.View):
             if isinstance(m, Match):
                 match: Match = m
                 if not in_event:
-                    in_event = match.hava_player(player)
+                    in_event = match.have_player(player)
                 if not match.have_names():
                     match.set_names(await functions.get_player_name(interaction, match.get_player().get_mention()), 
                                     await functions.get_player_name(interaction, match.get_opponent().get_mention()))
