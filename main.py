@@ -113,14 +113,13 @@ async def event_context(interaction: discord.Interaction, message: discord.Messa
 
 @tree.command(name="add_player", description="Add player to an event.")
 async def add_player(interaction: discord.Interaction, user: discord.Member, team: str = "A"):
-    msg = ""
     await interaction.response.defer(ephemeral=True)
+    msg = ""
     team_a = team.upper() == "A"
     view_event = State.get_eventView(interaction.channel.id)
     if view_event is not None:
         if isinstance(view_event, CreatingEventView):
-            view_event.add_player(user, team_a=team_a)
-            await view_event.update_message()
+            await view_event.add_player(user, team_a=team_a)
             msg = return_message(f"{user.mention} added to event.", await event_message(interaction, view_event))
         else:
             msg = "Event already started. Can't add players."
@@ -179,7 +178,6 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # allow commands (optional depending on setup)
     if message.content.startswith("/"):
         return
 

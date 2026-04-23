@@ -21,6 +21,9 @@ class Matches:
     def set_matches(self, matches):
         self.matches = matches
 
+    def in_event(self, player_tag):
+        return any(m.have_player(player_tag) for m in self.matches)
+
     def get_match(self, match_id) -> Match:
         for m in self.matches:
             if m.id == match_id:

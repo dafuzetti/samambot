@@ -18,7 +18,7 @@ class RunningEventView(discord.ui.View):
     def __init__(self, event: Event, interaction: discord.Interaction = None):
         super().__init__(timeout=None)
         self.message = None
-        self.processing_player = None  # Flag to prevent multiple simultaneous actions
+        self.processing_player = None 
         self.event = event
         self.guild_id = event.guild_id if interaction is None else interaction.guild.id
         self.channel_id = event.channel_id if interaction is None else interaction.channel.id
@@ -52,7 +52,7 @@ class RunningEventView(discord.ui.View):
             self.processing_player = interaction.user.mention
             confirm_view = ConfirmCloseView(interaction)
             await interaction.response.send_message(
-                "Are you sure you want to close the event?", view=confirm_view, ephemeral=True
+                "Closing an event cannot be undone, do you want to close it?", view=confirm_view, ephemeral=True
             )
 
             await confirm_view.wait()
@@ -60,7 +60,6 @@ class RunningEventView(discord.ui.View):
             if not confirm_view.confirmed:
                 await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
             else:
-                #await self.update_message()
                 State.remove_event(interaction.channel.id)
                 self.event = db_event.close_event(self.guild_id, self.channel_id, interaction.user.mention, self.event.event_id)
                 await self.update_message()
@@ -82,24 +81,21 @@ class RunningEventView(discord.ui.View):
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):
         processing, msg = await self.is_processing()
-        player = interaction.user.mention
-        in_event = False
         if processing:
             await interaction.response.send_message(msg, ephemeral=True)
             return
-        
         await interaction.response.defer(ephemeral=True)
+        
+        player = interaction.user.mention
 
         for m in self.event.get_matches():
             if isinstance(m, Match):
                 match: Match = m
-                if not in_event:
-                    in_event = match.have_player(player)
                 if not match.have_names():
                     match.set_names(await functions.get_player_name(interaction, match.get_player().get_mention()), 
                                     await functions.get_player_name(interaction, match.get_opponent().get_mention()))
         
-        if in_event:
+        if self.event.in_event(player):
             confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
             confirm_view.message = await interaction.followup.send(
                 "Select your opponent:",

@@ -19,8 +19,9 @@ class CreatingEventView(discord.ui.View):
     def total_players(self):
         return self.players.len()
 
-    def add_player(self, player: discord.User, team_a: bool = True):
+    async def add_player(self, player: discord.User, team_a: bool = True):
         self.players.add_player(player_tag=player.mention, team=1 if team_a else 2, name=player.display_name)
+        await self.update_message()
 
     # Needs to be called from the remove player view
     async def remove_player(self, player_mention):
@@ -74,9 +75,7 @@ class CreatingEventView(discord.ui.View):
             return
         await interaction.response.defer() 
 
-        self.add_player(interaction.user)
-
-        await self.update_message()
+        await self.add_player(interaction.user)
 
     @discord.ui.button(label="Join Team B (0)", style=discord.ButtonStyle.blurple, custom_id="team_b")
     async def join_b(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -88,14 +87,12 @@ class CreatingEventView(discord.ui.View):
         
         # Only for testing purposes
         if interaction.guild.id == 1184558595602391121 and interaction.user.id == 723638398312513586: 
-            self.add_player(interaction.guild.get_member(690644525177110561), team_a=True)
-            self.add_player(interaction.guild.get_member(866339429273305098), team_a=True)
-            self.add_player(interaction.guild.get_member(1184558521459671110), team_a=False)
+            await self.add_player(interaction.guild.get_member(690644525177110561), team_a=True)
+            await self.add_player(interaction.guild.get_member(866339429273305098), team_a=True)
+            await self.add_player(interaction.guild.get_member(1184558521459671110), team_a=False)
         # End of testing purposes
 
-        self.add_player(interaction.user, team_a=False)
-
-        await self.update_message()
+        await self.add_player(interaction.user, team_a=False)
 
     @discord.ui.button(label="Remove player", style=discord.ButtonStyle.danger, custom_id="drop", disabled=True)
     async def drop(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -117,9 +114,6 @@ class CreatingEventView(discord.ui.View):
             )
             await asyncio.sleep(30)
             await msg_no_players.delete()
-
-
-        # need to update from the internal event? await self.update_message()
 
     @discord.ui.button(label="Start Event", style=discord.ButtonStyle.red, custom_id="start", disabled=True)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):

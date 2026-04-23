@@ -31,6 +31,9 @@ class Event:
     def set_matches(self, matches: Matches):
         self.matches = matches
 
+    def in_event(self, player_tag):
+        return self.matches.in_event(player_tag) if self.matches else False
+
     def get_players(self) -> Players:
         return self.matches.get_players()
     
