@@ -187,14 +187,17 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     await tree.sync()
-
+    
     active_events = db_event.get_all_active_events()
-
+    
     for event in active_events:
         view = RunningEventView(event=event)
+        guild = bot.get_guild(event.guild_id)
+        if guild:
+            await view.load_player_names(guild) 
         await event_message(interaction=None, view=view)
         bot.add_view(view)
-
+    
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)

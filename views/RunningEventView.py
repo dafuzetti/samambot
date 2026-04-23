@@ -40,6 +40,29 @@ class RunningEventView(discord.ui.View):
         if self.message is not None:
             await self.message.edit(embed=self.build_embed(), view=self)
     
+    async def load_player_names(self, guild):
+        for m in self.event.get_matches():
+            if isinstance(m, Match):
+                if not m.have_names():
+                    player_name = await self._fetch_member_name(guild, m.get_player().get_mention())
+                    opponent_name = await self._fetch_member_name(guild, m.get_opponent().get_mention())
+                    m.set_names(player_name, opponent_name)
+
+    async def _fetch_member_name(self, guild, player_mention: str) -> str:
+        import re
+        match = re.search(r"<@!?(\d+)>", player_mention)
+        if not match:
+            return player_mention
+        
+        user_id = int(match.group(1))
+        try:
+            member = guild.get_member(user_id)
+            if not member:
+                member = await guild.fetch_member(user_id)
+            return member.display_name if member else player_mention
+        except:
+            return player_mention
+
     @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")
     async def close_event(self, interaction: discord.Interaction, button: discord.ui.Button):
         processing, msg = await self.is_processing()
@@ -86,16 +109,7 @@ class RunningEventView(discord.ui.View):
             return
         await interaction.response.defer(ephemeral=True)
         
-        player = interaction.user.mention
-
-        for m in self.event.get_matches():
-            if isinstance(m, Match):
-                match: Match = m
-                if not match.have_names():
-                    match.set_names(await functions.get_player_name(interaction, match.get_player().get_mention()), 
-                                    await functions.get_player_name(interaction, match.get_opponent().get_mention()))
-        
-        if self.event.in_event(player):
+        if self.event.in_event(interaction.user.mention):
             confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
             confirm_view.message = await interaction.followup.send(
                 "Select your opponent:",
