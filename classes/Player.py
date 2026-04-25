@@ -19,7 +19,7 @@ class Player:
             return f"{self.get_mention()} ({self.get_team()})"
 
     def get_name(self) -> str:
-        return State.get_player_name(self.get_mention()) or self.get_mention()
+        return State.get_player_name(self.get_mention())
     
     def get_id(self) -> int:
         return int(self.get_mention().strip("<@!>"))

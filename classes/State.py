@@ -26,7 +26,7 @@ class State:
     
     @classmethod
     def get_player_name(cls, player_mention):
-        return cls.players.get(player_mention)
+        return cls.players.get(player_mention) or player_mention
     
     @classmethod
     def set_player_name_by_guild(cls, guild, player):

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from classes.State import State
 import discord
 from views.BaseView import BaseTempView
 
@@ -36,7 +37,7 @@ class MyMatchesView(BaseTempView):
                         value += f"↳ **{name_cat}**: {events_str}\n"
 
                     embed.add_field(
-                        name=f"👤 **{self.get_display_name(interaction, opponent)}** ({player_count})",
+                        name=f"👤 **{State.get_player_name(opponent)}** ({player_count})",
                         value=value,
                         inline=False
                     )
@@ -44,7 +45,7 @@ class MyMatchesView(BaseTempView):
             else:
                 embed = discord.Embed(title="You don't have any match to play!")
         except Exception:
-            embed = discord.Embed(title="User not found")
+            embed = discord.Embed(title="Not found")
 
         return embed
     
@@ -68,8 +69,3 @@ class MyMatchesView(BaseTempView):
         for player, category, event_id in self.rows:
             data[player][category].append(event_id)
         return data
-    
-    def get_display_name(self, interaction, mention: str):
-        user_id = int(mention.strip("<@!>"))
-        member = interaction.guild.get_member(user_id)
-        return member.display_name if member else mention
