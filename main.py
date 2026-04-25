@@ -217,7 +217,6 @@ bot.run(TOKEN)
 # public message when event gets closed? when last player reports result to ask for confirmation
 # arquivo de fechamento de event 
 # move here / liberar para eventos encerrados? bloquear por usuario?
-# blocar interface quando alguma acao principal estivver ativa (is active)
 
 # blocar edicao de eventos encerrados db
 # to no play 

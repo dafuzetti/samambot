@@ -96,9 +96,7 @@ class CreatingEventView(BasePermView):
             await self.send_message(interaction, content="Events can only be started inside a category (season). \nCreate or move a channel to a category.")
             return 
         
-        # self.processing_player = interaction.user.mention
-        await self.update_message(clean_btns=True) 
-
+        self.process_start(interaction.user.mention)
         await self.send_message(interaction, content="⏳ Event starting...")
 
         event=db_event.create_event(

@@ -18,7 +18,6 @@ class BaseView(discord.ui.View):
             content, view=self, ephemeral=ephemeral, wait=True, **kwargs
         )
 
-
 class BaseTempView(BaseView):
     """Short-lived ephemeral views that auto-delete."""
     def __init__(self, timeout=60, message=None, cancel_btn=True, parent_view=None):
@@ -33,12 +32,14 @@ class BaseTempView(BaseView):
     def build_embed(self, interaction):
         return None
 
-    async def on_timeout(self):
+    async def on_timeout(self, interaction: discord.Interaction):
         if self.message:
             try:
                 await self.message.delete()
             except discord.NotFound:
                 pass
+        if self.parent_view:
+            self.parent_view.process_end(interaction.user.mention)
 
     async def dismiss(self, interaction: discord.Interaction):
         self.stop()
@@ -56,12 +57,28 @@ class BasePermView(BaseView):
         self.reply_message = None
         self.delete_task = None
 
+    def process_start(self, player_tag):
+        self.processing_player = player_tag
+        asyncio.ensure_future(self._clear_after())
+
+    def process_end(self, player_tag=None):
+        if player_tag is None or (player_tag and self.processing_player == player_tag):
+            self.processing_player = None
+
+    async def _clear_after(self, delay: int = 120):
+        await asyncio.sleep(delay)
+        self.process_end()
+
+    async def defer_response(self, interaction: discord.Interaction):
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+
     async def is_processing(self, interaction: discord.Interaction):
-        if self.processing_player:
-            await interaction.response.send_message(f"{self.processing_message} \nBlocked by:{self.processing_player}", ephemeral=True)
-            return True, 
+        if self.processing_player and self.processing_player != interaction.user.mention:
+            await self.send_message(interaction, f"{self.processing_message} \nBlocked by:{self.processing_player}", ephemeral=True)
+            return True
     
-        await interaction.response.defer(ephemeral=True)
+        await self.defer_response(interaction)
         return False
 
     async def send_message(self, interaction: discord.Interaction, content: str=None, view=None):

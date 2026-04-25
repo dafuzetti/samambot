@@ -49,12 +49,13 @@ class RunningEventView(BasePermView):
 
         if discord.utils.get(interaction.guild.roles, name="Samambot Admin") not in interaction.user.roles:
             await self.send_message(interaction, content="Only users with 'Samambot Admin' role can close events")
-        else:        
+        else:
+            self.process_start(interaction.user.mention)
             await self.send_message(interaction, content="This will permanently close the event. Are you sure?", view=ConfirmCloseView(self))
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
+        await self.defer_response(interaction)
         await self.send_message(interaction, "Fetching your open games...")
         my_open_matches = db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention)
         await self.send_message(interaction, view=MyMatchesView(my_open_matches))
