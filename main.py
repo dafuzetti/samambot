@@ -87,7 +87,7 @@ async def save_result(interaction: discord.Interaction, winner: discord.User, lo
 
     if event_data is not None:
         if isinstance(view_event, RunningEventView):
-            view_event.event.set_matches(event_data.matches)
+            view_event.event.set_matches(event_data.get_matches())
         else:
             view_event = RunningEventView(interaction=interaction, event=event_data)
             State.set_eventView(interaction.channel.id, view_event)

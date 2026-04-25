@@ -6,7 +6,6 @@ from db.sql_match import Sql_Match
 from db.sql_team import Sql_Team
 from db.sql_event import Sql_Event
 from classes.Match import Match
-from classes.Matches import Matches
 from classes.Players import Players
 from classes.Event import Event
 from psycopg2.extras import RealDictCursor
@@ -60,7 +59,7 @@ def update_matches(guild, channel, event_id, user, player, opponent, win, lose) 
                 conn.close()
     return read_event(guild, channel, event_id)
 
-def read_matches(event_id=None) -> Matches:
+def read_matches(event_id=None) -> list[Match]:
     conn = None
     matches = None
     try:

@@ -16,10 +16,6 @@ class Match:
         self.player_b = Player(player_tag=player_b, team=team_b)
         self.wins_b = wins_b
 
-    def set_result(self, wins_a, wins_b):
-        self.wins_a = wins_a
-        self.wins_b = wins_b
-
     def have_player(self, player_tag):
         return player_tag == self.player_a.get_mention() or player_tag == self.player_b.get_mention()
 
