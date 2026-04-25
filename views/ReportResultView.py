@@ -14,7 +14,7 @@ class ReportResultView(BaseTempView):
             button = discord.ui.Button(label=label)
 
             async def callback(interaction: discord.Interaction, match=match_data):
-                view = ResultSelectView(match=match, event_data=event_data, message=self.message)
+                view = ResultSelectView(match=match, event_data=event_data, message=self.message, parent_view=self.parent_view)
                 await interaction.response.edit_message(
                     content=f"Selected: {match}",
                     view=view
@@ -32,7 +32,7 @@ class ResultSelectView(BaseTempView):
 
         async def handle_result(interaction: discord.Interaction):
             won = interaction.data["custom_id"] == "won"
-            view = ScoreView(match=self.match, event_data=self.event_data, user_won=won, message=self.message)
+            view = ScoreView(match=self.match, event_data=self.event_data, user_won=won, message=self.message, parent_view=self.parent_view)
             await interaction.response.edit_message(
                 content=f"Select, {'you won' if won else 'you lost'} for:",
                 view=view
@@ -70,7 +70,7 @@ class ScoreView(BaseTempView):
                 self.match.get_opponent().get_mention(), win, loss
             )
 
-            await self.parent_view.update_message(event_data=event_data)
+            await self.parent_view.update_message(event=event_data)
             
             await interaction.edit_original_response(
                 content=f"{'You won' if self.user_won else 'You lost'}, saved: \nMatch: {event_data.get_match(self.match.get_id())}",

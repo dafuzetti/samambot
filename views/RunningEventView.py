@@ -86,7 +86,7 @@ class RunningEventView(BasePermView):
             return
         
         if self.event.in_event(interaction.user.mention):
-            confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
+            confirm_view = ReportResultView(interaction=interaction, event_data=self.event, parent_view=self)
             confirm_view.message = await interaction.followup.send(
                 "Select your opponent:",
                 view=confirm_view,
