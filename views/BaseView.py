@@ -64,16 +64,16 @@ class BasePermView(BaseView):
         await interaction.response.defer(ephemeral=True)
         return False
 
-    async def send_message(self, interaction: discord.Interaction, content: str=None, view=None, **kwargs):
+    async def send_message(self, interaction: discord.Interaction, content: str=None, view=None):
         msg_view = BaseTempView(cancel_btn=False) if view is None or not isinstance(view, BaseView) else view
         if self.reply_message:
             try:
-                await self.reply_message.edit(content=content, embed=msg_view.build_embed(interaction), view=msg_view, **kwargs)
+                await self.reply_message.edit(content=content, embed=msg_view.build_embed(interaction), view=msg_view)
             except discord.NotFound:
                 self.reply_message = None
 
         if not self.reply_message:
-            self.reply_message = await interaction.followup.send(content=content, embed=msg_view.build_embed(interaction), ephemeral=True, view=msg_view, **kwargs)
+            self.reply_message = await interaction.followup.send(content=content, embed=msg_view.build_embed(interaction), ephemeral=True, view=msg_view)
         msg_view.message = self.reply_message
         return self.reply_message
 

@@ -14,7 +14,7 @@ class CreatingEventView(BasePermView):
     def __init__(self):
         super().__init__()
         self.players: Players = Players()
-        self.processing_message = "⏳ Event is alreadystarting."
+        self.processing_message = "⏳ Starting event..."
 
     def total_players(self):
         return self.players.len()
@@ -30,16 +30,8 @@ class CreatingEventView(BasePermView):
 
     def build_embed(self):
         embed = discord.Embed(title="New Event Lobby")
-
-        list_a = self.players.get_players_names(1)
-        list_b = self.players.get_players_names(2)
-
-        team_a = "\n".join(list_a) if list_a else "-"
-        team_b = "\n".join(list_b) if list_b else "-"
-
-        embed.add_field(name="Team A", value=team_a, inline=True)
-        embed.add_field(name="Team B", value=team_b, inline=True)
-
+        embed.add_field(name="Team A", value=self.players.get_players_names_col(1), inline=True)
+        embed.add_field(name="Team B", value=self.players.get_players_names_col(2), inline=True)
         return embed
 
     async def update_message(self, clean_btns: bool = False):
@@ -89,31 +81,25 @@ class CreatingEventView(BasePermView):
             return
 
         if self.players.len() > 0:
-            confirm_view = RemovePlayerView(self.players, self)
-            confirm_view.message = await interaction.followup.send(
-                "Select player to be removed:", view=confirm_view, ephemeral=True
-            )
+            await self.send_message(interaction, content="Select a player to be removed:", view=RemovePlayerView(self.players, self))
         else:
-            msg_no_players = await interaction.followup.send(
-                "No players to be removed.", ephemeral=True
-            )
-            await asyncio.sleep(30)
-            await msg_no_players.delete()
+            await self.send_message(interaction, content="No players to remove.")
 
     @discord.ui.button(label="Start Event", style=discord.ButtonStyle.red, custom_id="start", disabled=True)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
         if await self.is_processing(interaction):
             return
         if not self.players.get_ready():
-            await interaction.followup.send("You need 4, 6 or 8 players with balanced teams to start the event.", ephemeral=True)
+            await self.send_message(interaction, content="You need 4, 6 or 8 players with balanced teams to start the event.")
             return 
         if interaction.channel.category is None:
-            await interaction.followup.send("Events can only be started inside a category (season). \nCreate or move a channel to a category.", ephemeral=True)
+            await self.send_message(interaction, content="Events can only be started inside a category (season). \nCreate or move a channel to a category.")
             return 
         
-        self.processing_player = interaction.user.mention
+        # self.processing_player = interaction.user.mention
         await self.update_message(clean_btns=True) 
-        await interaction.followup.send("⏳ Event starting...", ephemeral=True)
+
+        await self.send_message(interaction, content="⏳ Event starting...")
 
         event=db_event.create_event(
             interaction.guild_id,
@@ -122,15 +108,10 @@ class CreatingEventView(BasePermView):
             interaction.channel.category_id,
             self.players
         )
-        new_view = RunningEventView(
-            interaction=interaction,
-            event=event
-        )
+        new_view = RunningEventView(interaction=interaction, event=event)
         new_view.message = await interaction.channel.send(embed=new_view.build_embed(),view=new_view)
         State.set_eventView(interaction.channel.id, new_view)
         db_event.update_event_message_id(new_view.event.event_id, new_view.message.id)
-        try:
-            await interaction.edit_original_response(content=f"Event started!", view=None)
-        except:
-            pass
+        
+        await self.send_message(interaction, content="Event started!")
         functions.channelnameopen(interaction.channel, new_view.event.get_event_name())

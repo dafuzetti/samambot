@@ -17,8 +17,9 @@ class Players:
     def get_players_tags(self, team=None) -> list[str]:
         return [p.get_mention() for p in self.players if (team is None or p.team == team)]
 
-    def get_players_names(self, team=None) -> list[str]:
-        return [p.get_name() for p in self.players if (team is None or p.team == team)]
+    def get_players_names_col(self, team=None) -> str:
+        players = [p.get_name() for p in self.players if (team is None or p.team == team)]
+        return "\n".join(players) if players else "-"
     
     def get_ready(self):
         return (
