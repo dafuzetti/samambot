@@ -1,11 +1,10 @@
 from collections import defaultdict
 import discord
-import functions
-import db.db_reports as db_reports
+from views.BaseView import BaseTempView
 
-class MyMatchesView(discord.ui.View):
+class MyMatchesView(BaseTempView):
     def __init__(self, rows):
-        super().__init__(timeout=None)
+        super().__init__(cancel_btn=False)
         self.rows = rows
 
     async def build_embed(self, interaction, user):

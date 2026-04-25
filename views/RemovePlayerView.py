@@ -19,13 +19,7 @@ class RemovePlayerView(BaseTempView):
 
                 original_view = State.get_eventView(interaction.channel.id)
 
-                processing, msg = original_view.is_processing()
-                if processing:
-                    await interaction.response.send_message(msg, ephemeral=True)
-                    return
-
-                await original_view.remove_player(self.mention)
-
+                await original_view.remove_player(self.mention)                
                 await interaction.edit_original_response(content=f"Player {self.mention} removed.", view=None)
             
             button.callback = callback

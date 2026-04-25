@@ -46,6 +46,16 @@ class BasePermView(BaseView):
     """Permanent views that persist indefinitely."""
     def __init__(self, message=None):
         super().__init__(timeout=None, message=message)
+        self.processing_player = None  # Flag to prevent multiple simultaneous starts
+        self.processing_message = "⏳ Processing... Please wait."
+
+    async def is_processing(self, interaction: discord.Interaction):
+        if self.processing_player:
+            await interaction.response.send_message(f"{self.processing_message} \nBlocked by:{self.processing_player}", ephemeral=True)
+            return True, 
+    
+        await interaction.response.defer(ephemeral=True)
+        return False
 
     async def refresh(self, content: str, **kwargs):
         if self.message:

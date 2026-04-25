@@ -1,12 +1,14 @@
 import discord
+import functions
+from classes.State import State
+import db.db_event as db_event
 
 from views.BaseView import BaseTempView
 
 class ConfirmCloseView(BaseTempView):
-    def __init__(self, interaction: discord.Interaction = None):
+    def __init__(self, parent_view=None):
         super().__init__()
-        self.confirmed = False
-        self.confirmation_interaction = interaction
+        self.parent_view = parent_view
 
         yes_button = discord.ui.Button(label="Close Event", style=discord.ButtonStyle.red)
         yes_button.callback = self.yes_callback
@@ -14,8 +16,11 @@ class ConfirmCloseView(BaseTempView):
 
     async def yes_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        self.confirmed = True
-        # Update the confirmation message to "Event closed"
-        if self.confirmation_interaction:
-            await self.confirmation_interaction.edit_original_response(content="⏳ Event closing...", view=None)
-        self.stop()  # stop the view to end interaction
+        await interaction.edit_original_response(content="⏳ Event closing...", view=None)
+
+        event = db_event.close_event(interaction.guild.id, interaction.channel.id, interaction.user.mention)
+        await self.parent_view.update_message(event=event)
+
+        await interaction.edit_original_response(content="Event closed!", view=None)
+        State.remove_event(interaction.channel.id)
+        functions.channelnameclose(interaction.channel)

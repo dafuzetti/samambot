@@ -202,9 +202,11 @@ async def on_ready():
 
 bot.run(TOKEN)
 
+# problema com nomes e tags load/report result
+# 2 event prints somehow, one if tag another with name
+# mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal
 # my open games event summary 
 # populaet name at players 
-# handle player name 
 # remove all team A/B e criar eventos individuais
 
 # creating event: start event adicionar placeholders
@@ -212,7 +214,7 @@ bot.run(TOKEN)
 # public message when event gets closed? when last player reports result to ask for confirmation
 # arquivo de fechamento de event 
 # move here / liberar para eventos encerrados? bloquear por usuario?
-# Block evento sem category?
+# blocar interface quando alguma acao principal estivver ativa (is active)
 
 # blocar edicao de eventos encerrados db
 # to no play 
@@ -224,3 +226,4 @@ bot.run(TOKEN)
 # Deletar evento?  
 # remover classes.propriety access
 # mover print para dentro das classes
+# salvar nomes dos jogadores no banco de dados

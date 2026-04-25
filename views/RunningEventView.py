@@ -6,6 +6,7 @@ import db.db_event as db_event
 import db.db_reports as db_reports
 import functions
 
+from views.BaseView import BasePermView
 from views.ConfirmCloseView import ConfirmCloseView
 from views.ReportResultView import ReportResultView
 from views.MyMatchesView import MyMatchesView
@@ -14,12 +15,11 @@ from classes.Match import Match
 from classes.Event import Event
 from classes.State import State
 
-class RunningEventView(discord.ui.View):
+class RunningEventView(BasePermView):
     def __init__(self, event: Event, interaction: discord.Interaction = None):
-        super().__init__(timeout=None)
-        self.message = None
-        self.processing_player = None 
+        super().__init__()
         self.event = event
+        self.processing_message = "⏳ Event is being closed."
         self.guild_id = event.guild_id if interaction is None else interaction.guild.id
         self.channel_id = event.channel_id if interaction is None else interaction.channel.id
         self.season_name = "" if interaction is None else getattr(getattr(interaction.channel, "category", None), "name", "")
@@ -31,12 +31,9 @@ class RunningEventView(discord.ui.View):
         embed = self.print_event_started()
         return embed
 
-    async def is_processing(self):
-        if self.processing_player:
-            return True, f"⏳ Event is being closed by: {self.processing_player}"
-        return False, None
-
-    async def update_message(self):
+    async def update_message(self, event: Event = None):
+        if event is not None:
+            self.event = event
         if self.message is not None:
             await self.message.edit(embed=self.build_embed(), view=self)
     
@@ -65,34 +62,19 @@ class RunningEventView(discord.ui.View):
 
     @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")
     async def close_event(self, interaction: discord.Interaction, button: discord.ui.Button):
-        processing, msg = await self.is_processing()
-        if processing:
-            await interaction.response.send_message(msg, ephemeral=True)
+        if await self.is_processing(interaction):
             return
 
-        role = discord.utils.get(interaction.guild.roles, name="Samambot Admin")
-        if role in interaction.user.roles:
-            self.processing_player = interaction.user.mention
-            confirm_view = ConfirmCloseView(interaction)
-            await interaction.response.send_message(
-                "Closing an event cannot be undone, do you want to close it?", view=confirm_view, ephemeral=True
-            )
-
-            await confirm_view.wait()
-
-            if not confirm_view.confirmed:
-                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
-            else:
-                State.remove_event(interaction.channel.id)
-                self.event = db_event.close_event(self.guild_id, self.channel_id, interaction.user.mention, self.event.event_id)
-                await self.update_message()
-                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
-                functions.channelnameclose(interaction.channel)
-            self.processing_player = None
-        else:
-            await interaction.response.send_message(
+        if discord.utils.get(interaction.guild.roles, name="Samambot Admin") not in interaction.user.roles:
+            await interaction.followup.send(
                 "Only users with 'Samambot Admin' role can close events", ephemeral=True
             )
+            return
+        
+        confirm_view = ConfirmCloseView(self)
+        confirm_view.message = await interaction.followup.send(
+            "Closing an event cannot be undone, do you want to close it?", view=confirm_view, ephemeral=True
+        )
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -103,11 +85,8 @@ class RunningEventView(discord.ui.View):
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):
-        processing, msg = await self.is_processing()
-        if processing:
-            await interaction.response.send_message(msg, ephemeral=True)
+        if await self.is_processing(interaction):
             return
-        await interaction.response.defer(ephemeral=True)
         
         if self.event.in_event(interaction.user.mention):
             confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
