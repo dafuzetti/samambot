@@ -204,6 +204,9 @@ async def on_ready():
 
 bot.run(TOKEN)
 
+# patronizar mensagens de resposta usando baseview
+# hilight no nome do jogador que ganhou
+# report event quendo nao presente
 # mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal
 # State. realmente necessario?
 # my open games event summary 

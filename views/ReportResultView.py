@@ -34,7 +34,7 @@ class ResultSelectView(BaseTempView):
             won = interaction.data["custom_id"] == "won"
             view = ScoreView(match=self.match, event_data=self.event_data, user_won=won, message=self.message, parent_view=self.parent_view)
             await interaction.response.edit_message(
-                content=f"Select, {'you won' if won else 'you lost'} for:",
+                content=f"You {'won' if won else 'lost'}! What was the score?:",
                 view=view
             )
 

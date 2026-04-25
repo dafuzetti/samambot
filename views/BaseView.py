@@ -1,3 +1,4 @@
+import asyncio
 import discord
 
 class BaseView(discord.ui.View):
@@ -23,10 +24,14 @@ class BaseTempView(BaseView):
     def __init__(self, timeout=60, message=None, cancel_btn=True, parent_view=None):
         super().__init__(timeout=timeout, message=message)
         self.parent_view = parent_view
+
         if cancel_btn:
             cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.grey, row=4)
             cancel_button.callback = self.no_callback
             self.add_item(cancel_button)
+
+    def build_embed(self, interaction):
+        return None
 
     async def on_timeout(self):
         if self.message:
@@ -48,6 +53,8 @@ class BasePermView(BaseView):
         super().__init__(timeout=None, message=message)
         self.processing_player = None  # Flag to prevent multiple simultaneous starts
         self.processing_message = "⏳ Processing... Please wait."
+        self.reply_message = None
+        self.delete_task = None
 
     async def is_processing(self, interaction: discord.Interaction):
         if self.processing_player:
@@ -56,6 +63,19 @@ class BasePermView(BaseView):
     
         await interaction.response.defer(ephemeral=True)
         return False
+
+    async def send_message(self, interaction: discord.Interaction, content: str=None, view=None, **kwargs):
+        msg_view = BaseTempView(cancel_btn=False) if view is None or not isinstance(view, BaseView) else view
+        if self.reply_message:
+            try:
+                await self.reply_message.edit(content=content, embed=msg_view.build_embed(interaction), view=msg_view, **kwargs)
+            except discord.NotFound:
+                self.reply_message = None
+
+        if not self.reply_message:
+            self.reply_message = await interaction.followup.send(content=content, embed=msg_view.build_embed(interaction), ephemeral=True, view=msg_view, **kwargs)
+        msg_view.message = self.reply_message
+        return self.reply_message
 
     async def refresh(self, content: str, **kwargs):
         if self.message:

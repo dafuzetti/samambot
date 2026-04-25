@@ -7,10 +7,12 @@ class MyMatchesView(BaseTempView):
     def __init__(self, rows):
         super().__init__(cancel_btn=False)
         self.rows = rows
+        self.has_embedded_message = True
 
-    async def build_embed(self, interaction, user):
+    def build_embed(self, interaction):
         grouped = self.group_matches()
         total_matches = 0
+        user = interaction.user
         try:
             if len(self.rows) > 0:
                 embed = discord.Embed(title=f"{user.display_name} Open Games:")
