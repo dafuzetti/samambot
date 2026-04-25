@@ -20,7 +20,8 @@ class CreatingEventView(BasePermView):
         return self.players.len()
 
     async def add_player(self, player: discord.User, team_a: bool = True):
-        self.players.add_player(player_tag=player.mention, team=1 if team_a else 2, name=player.display_name)
+        self.players.add_team_mate(player_tag=player.mention, team=1 if team_a else 2)
+        State.set_player_name(player.mention, player.display_name)
         await self.update_message()
 
     async def remove_player(self, player_mention):
@@ -88,7 +89,7 @@ class CreatingEventView(BasePermView):
             return
 
         if self.players.len() > 0:
-            confirm_view = RemovePlayerView(self.players)
+            confirm_view = RemovePlayerView(self.players, self)
             confirm_view.message = await interaction.followup.send(
                 "Select player to be removed:", view=confirm_view, ephemeral=True
             )

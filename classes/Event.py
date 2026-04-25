@@ -8,7 +8,7 @@ class Event:
         self.channel_id = channel_id
         self.type = type
         self.event_id = event_id
-        self.matches = matches
+        self.matches: Matches = matches
         self.sequence = sequence
         self.victory = victory
         self.message_id = message_id

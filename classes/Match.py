@@ -20,11 +20,6 @@ class Match:
         self.wins_a = wins_a
         self.wins_b = wins_b
 
-    def have_names(self):
-        if self.player_a.get_mention() == self.player_a.get_name():
-            return False
-        return True
-
     def have_player(self, player_tag):
         return player_tag == self.player_a.get_mention() or player_tag == self.player_b.get_mention()
 
@@ -45,10 +40,6 @@ class Match:
 
     def set_losses(self, losses):
         self.wins_b = losses
-
-    def set_names(self, player_a_name, player_b_name):
-        self.player_a.set_name(player_a_name)
-        self.player_b.set_name(player_b_name)
 
     def get_vs_label(self, player_tag):
         if self.wins_a == 0 and self.wins_b == 0:

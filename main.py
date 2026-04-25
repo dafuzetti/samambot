@@ -194,7 +194,9 @@ async def on_ready():
         view = RunningEventView(event=event)
         guild = bot.get_guild(event.guild_id)
         if guild:
-            await view.load_player_names(guild) 
+            for player in event.get_players():
+                State.set_player_name_by_guild(guild, player)
+
         await event_message(interaction=None, view=view)
         bot.add_view(view)
     
@@ -202,12 +204,10 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# problema com nomes e tags load/report result
-# 2 event prints somehow, one if tag another with name
+# mover print para dentro das classes
 # mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal
 # State. realmente necessario?
 # my open games event summary 
-# populaet name at players 
 # remove all team A/B e criar eventos individuais
 
 # creating event: start event adicionar placeholders
@@ -226,5 +226,4 @@ bot.run(TOKEN)
 # move read_events para dentro das comm
 # Deletar evento?  
 # remover classes.propriety access
-# mover print para dentro das classes
 # salvar nomes dos jogadores no banco de dados

@@ -17,7 +17,7 @@ class RemovePlayerView(BaseTempView):
                 await interaction.response.defer()
                 self.mention = player.get_mention()
 
-                await self.parent_view.original_view.remove_player(self.mention)                
+                await self.parent_view.remove_player(self.mention)                
                 await interaction.edit_original_response(content=f"Player {self.mention} removed.", view=None)
             
             button.callback = callback

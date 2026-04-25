@@ -1,3 +1,4 @@
+from classes.Player import Player
 from classes.Match import Match
 
 class Matches:
@@ -23,6 +24,10 @@ class Matches:
 
     def in_event(self, player_tag):
         return any(m.have_player(player_tag) for m in self.matches)
+
+    def get_players(self) -> list[Player]:
+        all_players = [p for m in self.matches for p in (m.get_player(), m.get_opponent())]
+        return list(dict.fromkeys(all_players))
 
     def get_match(self, match_id) -> Match:
         for m in self.matches:

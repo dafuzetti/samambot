@@ -33,29 +33,6 @@ class RunningEventView(BasePermView):
             self.event = event
         if self.message is not None:
             await self.message.edit(embed=self.build_embed(), view=self)
-    
-    async def load_player_names(self, guild):
-        for m in self.event.get_matches():
-            if isinstance(m, Match):
-                if not m.have_names():
-                    player_name = await self._fetch_member_name(guild, m.get_player().get_mention())
-                    opponent_name = await self._fetch_member_name(guild, m.get_opponent().get_mention())
-                    m.set_names(player_name, opponent_name)
-
-    async def _fetch_member_name(self, guild, player_mention: str) -> str:
-        import re
-        match = re.search(r"<@!?(\d+)>", player_mention)
-        if not match:
-            return player_mention
-        
-        user_id = int(match.group(1))
-        try:
-            member = guild.get_member(user_id)
-            if not member:
-                member = await guild.fetch_member(user_id)
-            return member.display_name if member else player_mention
-        except:
-            return player_mention
 
     @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")
     async def close_event(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -63,9 +40,7 @@ class RunningEventView(BasePermView):
             return
 
         if discord.utils.get(interaction.guild.roles, name="Samambot Admin") not in interaction.user.roles:
-            await interaction.followup.send(
-                "Only users with 'Samambot Admin' role can close events", ephemeral=True
-            )
+            await interaction.followup.send("Only users with 'Samambot Admin' role can close events", ephemeral=True)
             return
         
         confirm_view = ConfirmCloseView(self)
@@ -152,7 +127,6 @@ class RunningEventView(BasePermView):
             emjA = '🍕'
             emjB = '🍕'
 
-        #embed.add_field(name='Event ID: ', value=str(self.event.get_id()), inline=True)
         embed.description = f'Event ID: {str(self.event.get_id())}'
         embed.add_field(name='Team A ' + str(emjA),
                         value=f'{labelA}{playersA}\nWin: {winA}', inline=False)
