@@ -29,3 +29,9 @@ class Player:
     
     def get_team(self):
         return self.team
+    
+    def __hash__(self):
+        return hash(self.get_mention()) 
+    
+    def __eq__(self, other):
+        return isinstance(other, Player) and self.get_mention() == other.get_mention()

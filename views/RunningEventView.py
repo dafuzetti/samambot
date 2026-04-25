@@ -77,61 +77,14 @@ class RunningEventView(BasePermView):
             await msg_player_not_in.delete()
 
     def print_event_started(self):
-        list = self.event.get_matches()
         str_title = f"__**Event:**__ {self.event.get_event_name()}  {self.season_name}"
         embed = discord.Embed(title=str_title, color=0x03f8fc)
-        count = len(list)
-        matches_desc = ''
-        playersA = ''
-        playersB = ''
-        pos = 0
-        winA = 0
-        winB = 0
-        nrp = math.sqrt(count)
-        toadd = 1
-
-        for m in list:
-            if isinstance(m, Match):
-                match: Match = m
-                pos = pos + 1
-                if str(match.wins_a) == '2':
-                    winA = winA + 1
-                if str(match.wins_b) == '2':
-                    winB = winB + 1
-                if pos == toadd:
-                    playersA = playersA + str(match.get_player().get_name())
-                    playersB = playersB + str(match.get_opponent().get_name())
-                    toadd = toadd + nrp + 1
-                if match.wins_a == 0 and match.wins_b == 0:
-                    matches_desc = matches_desc + str(match.get_player().get_name()) + \
-                        ' - ' + str(match.get_opponent().get_name()) + '\n'
-                else:
-                    matches_desc = matches_desc + str(match.get_player().get_name()) + ' ' + str(match.wins_a) + \
-                        '-' + str(match.wins_b) + ' ' + str(match.get_opponent().get_name()) + '\n'
-
-        emjA = ''
-        emjB = ''
-        labelA = 'Player: '
-        labelB = 'Player: '
-        if str(self.event.get_victory()) == '2':
-            labelB = 'WINNERS: '
-            labelA = 'losers: '
-            emjA = ':skull:'
-            emjB = ':trophy:'
-        elif str(self.event.get_victory()) == '1':
-            labelA = 'WINNERS: '
-            labelB = 'losers: '
-            emjA = ':trophy:'
-            emjB = ':skull:'
-        elif str(self.event.get_victory()) == '0':
-            emjA = '🍕'
-            emjB = '🍕'
 
         embed.description = f'Event ID: {str(self.event.get_id())}'
-        embed.add_field(name='Team A ' + str(emjA),
-                        value=f'{labelA}{playersA}\nWin: {winA}', inline=False)
-        embed.add_field(name='Team B ' + str(emjB),
-                        value=f'{labelB}{playersB}\nWin: {winB}', inline=False)
-        embed.add_field(name=f'Pairings: {winA + winB}/{count}',
-                        value=f'{matches_desc}', inline=False)
+        embed.add_field(name='Team A ' + self.event.get_team_emoji(1),
+                        value=f'{self.event.print_players(team=1)}\nWin: {self.event.get_wins(team=1)}', inline=False)
+        embed.add_field(name='Team B ' + self.event.get_team_emoji(2),
+                        value=f'{self.event.print_players(team=2)}\nWin: {self.event.get_wins(team=2)}', inline=False)
+        embed.add_field(name=f'Pairings: {self.event.get_wins(team=1) + self.event.get_wins(team=2)}/{len(self.event.get_matches())}',
+                        value=f'{self.event.print_matches()}', inline=False)
         return embed

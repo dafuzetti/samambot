@@ -204,7 +204,6 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# mover print para dentro das classes
 # mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal
 # State. realmente necessario?
 # my open games event summary 

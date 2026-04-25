@@ -27,8 +27,10 @@ class Event:
     def in_event(self, player_tag):
         return any(m.have_player(player_tag) for m in self.matches)
 
-    def get_players(self) -> list[Player]:
+    def get_players(self, team=None) -> list[Player]:
         all_players = [p for m in self.matches for p in (m.get_player(), m.get_opponent())]
+        if team is not None:
+            all_players = [p for p in all_players if p.get_team() == team]
         return list(dict.fromkeys(all_players))
 
     def get_channel_tag(self):
@@ -64,3 +66,31 @@ class Event:
         if player_tag is None:
             return self.matches
         return [m for m in self.matches if m.get_player().get_mention() == player_tag or m.get_opponent().get_mention() == player_tag]
+
+    def print_matches(self):
+        return '\n'.join(str(m) for m in self.matches)
+    
+    def print_players(self, team=None):
+        players = self.get_players(team=team)
+        prefix = 'Players: '
+        if team is not None:
+            if self.get_victory() is not None:
+                prefix = 'WINNERS: ' if self.get_victory() == team else 'losers:'
+        return prefix + ', '.join(p.get_mention() for p in players)
+    
+    def get_wins(self, team):
+        count = 0
+        for m in self.matches:
+            if m.get_wins() == 2 and m.get_player().get_team() == team:
+                count += 1
+            elif m.get_losses() == 2 and m.get_opponent().get_team() == team:
+                count += 1
+        return count
+    
+    def get_team_emoji(self, team) -> str:
+        victory = self.get_victory()
+        if victory is None:
+            return ''
+        if victory == 0:
+            return '🍕'
+        return '🏆' if str(team) == str(victory) else '💀'
