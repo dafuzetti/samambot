@@ -5,8 +5,8 @@ from classes.Players import Players
 from classes.Player import Player
 
 class RemovePlayerView(BaseTempView):
-    def __init__(self, players: Players):
-        super().__init__() 
+    def __init__(self, players: Players, parent_view=None):
+        super().__init__(parent_view=parent_view)
         self.mention = None
 
         for ploop in players.get_players():
@@ -17,9 +17,7 @@ class RemovePlayerView(BaseTempView):
                 await interaction.response.defer()
                 self.mention = player.get_mention()
 
-                original_view = State.get_eventView(interaction.channel.id)
-
-                await original_view.remove_player(self.mention)                
+                await self.parent_view.original_view.remove_player(self.mention)                
                 await interaction.edit_original_response(content=f"Player {self.mention} removed.", view=None)
             
             button.callback = callback

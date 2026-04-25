@@ -2,9 +2,7 @@ import asyncio
 import math
 import discord
 
-import db.db_event as db_event
 import db.db_reports as db_reports
-import functions
 
 from views.BaseView import BasePermView
 from views.ConfirmCloseView import ConfirmCloseView
@@ -13,7 +11,6 @@ from views.MyMatchesView import MyMatchesView
 
 from classes.Match import Match
 from classes.Event import Event
-from classes.State import State
 
 class RunningEventView(BasePermView):
     def __init__(self, event: Event, interaction: discord.Interaction = None):
@@ -93,15 +90,13 @@ class RunningEventView(BasePermView):
             confirm_view.message = await interaction.followup.send(
                 "Select your opponent:",
                 view=confirm_view,
-                ephemeral=True,
-                wait=True  # Makes it return the Message object
+                ephemeral=True
             )
         else:
             msg_player_not_in = await interaction.followup.send(
                 "You are not in the event.\n " \
                 "Report a match for other players by using /result",
-                ephemeral=True,
-                wait=True
+                ephemeral=True
             )
             await asyncio.sleep(30)
             await msg_player_not_in.delete()

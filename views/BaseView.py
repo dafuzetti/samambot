@@ -20,9 +20,9 @@ class BaseView(discord.ui.View):
 
 class BaseTempView(BaseView):
     """Short-lived ephemeral views that auto-delete."""
-    def __init__(self, timeout=60, message=None, cancel_btn=True):
+    def __init__(self, timeout=60, message=None, cancel_btn=True, parent_view=None):
         super().__init__(timeout=timeout, message=message)
-
+        self.parent_view = parent_view
         if cancel_btn:
             cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.grey, row=4)
             cancel_button.callback = self.no_callback

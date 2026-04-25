@@ -6,8 +6,8 @@ from classes.Event import Event
 from db import db_event
 
 class ReportResultView(BaseTempView):
-    def __init__(self, interaction: discord.Interaction = None, event_data: Event = None, message=None):
-        super().__init__(message=message)
+    def __init__(self, interaction: discord.Interaction = None, event_data: Event = None, parent_view=None):
+        super().__init__(parent_view=parent_view)
 
         for match_data in event_data.get_matches(interaction.user.mention):
             label = match_data.get_vs_label(interaction.user.mention)
@@ -25,8 +25,8 @@ class ReportResultView(BaseTempView):
 
 
 class ResultSelectView(BaseTempView):
-    def __init__(self, match: Match, event_data: Event, message=None):
-        super().__init__(message=message)
+    def __init__(self, match: Match, event_data: Event, message=None, parent_view=None):
+        super().__init__(message=message, parent_view=parent_view)
         self.match = match
         self.event_data = event_data
 
@@ -44,8 +44,8 @@ class ResultSelectView(BaseTempView):
 
 
 class ScoreView(BaseTempView):
-    def __init__(self, match: Match, event_data: Event, user_won: bool, message=None):
-        super().__init__(message=message)
+    def __init__(self, match: Match, event_data: Event, user_won: bool, message=None, parent_view=None):
+        super().__init__(message=message, parent_view=parent_view)
         self.match = match
         self.user_won = user_won
         self.event_data = event_data
@@ -69,9 +69,9 @@ class ScoreView(BaseTempView):
                 interaction.user.mention, self.match.get_player().get_mention(),
                 self.match.get_opponent().get_mention(), win, loss
             )
-            original_view = State.get_eventView(interaction.channel.id)
-            original_view.event = event_data
-            await original_view.update_message()
+
+            await self.parent_view.update_message(event_data=event_data)
+            
             await interaction.edit_original_response(
                 content=f"{'You won' if self.user_won else 'You lost'}, saved: \nMatch: {event_data.get_match(self.match.get_id())}",
                 view=None

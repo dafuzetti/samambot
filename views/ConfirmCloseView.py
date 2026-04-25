@@ -7,8 +7,7 @@ from views.BaseView import BaseTempView
 
 class ConfirmCloseView(BaseTempView):
     def __init__(self, parent_view=None):
-        super().__init__()
-        self.parent_view = parent_view
+        super().__init__(parent_view=parent_view)
 
         yes_button = discord.ui.Button(label="Close Event", style=discord.ButtonStyle.red)
         yes_button.callback = self.yes_callback

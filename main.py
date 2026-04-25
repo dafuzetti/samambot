@@ -205,6 +205,7 @@ bot.run(TOKEN)
 # problema com nomes e tags load/report result
 # 2 event prints somehow, one if tag another with name
 # mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal
+# State. realmente necessario?
 # my open games event summary 
 # populaet name at players 
 # remove all team A/B e criar eventos individuais
