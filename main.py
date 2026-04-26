@@ -204,14 +204,15 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
-
+# remover dummyes estatisticas de eventos
+# trocar dummmy por users
+# histoy not working outside of seasons - it should
 # mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal msgs main tudo
 # report event quendo nao presente
 # State. realmente necessario?
 # single operation for discord?
 # remove all team A/B e criar eventos individuais
 
-# creating event: start event adicionar placeholders
 # comandos de estatistica 
 # public message when event gets closed? when last player reports result to ask for confirmation
 # arquivo de fechamento de event 

@@ -1,7 +1,6 @@
 import asyncio
 import discord
 from classes.State import State
-import db.db_event as db_event
 
 class BaseView(discord.ui.View):
     def __init__(self, timeout=None, message=None):

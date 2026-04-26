@@ -19,6 +19,9 @@ class Match:
     def have_player(self, player_tag):
         return player_tag == self.player_a.get_mention() or player_tag == self.player_b.get_mention()
 
+    def have_dummy(self) -> bool:
+        return self.player_a.is_dummy() or self.player_b.is_dummy()
+
     def get_player(self) -> Player:
         return self.player_a
 
