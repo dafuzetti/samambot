@@ -73,7 +73,7 @@ class CreatingEventView(BasePermView):
             return
 
         if self.players.len() > 0:
-            await self.send_message(interaction, content="Select a player to be removed:", view=RemovePlayerView(self.players, self))
+            await self.send_message(interaction, content="Select a player to be removed:", view=RemovePlayerView(interaction, self.players, self))
         else:
             await self.send_message(interaction, content="No players to remove.")
 

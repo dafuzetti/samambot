@@ -61,7 +61,7 @@ async def add_player(interaction: discord.Interaction, user: discord.Member, tea
     view_event = State.get_eventView(interaction.channel.id)
     if view_event is not None:
         if isinstance(view_event, CreatingEventView):
-            await view_event.add_player(user, team_a=team_a)
+            await view_event.add_player(interaction, user, team_a=team_a)
             msg = return_message(f"{user.mention} added to event.", await event_message(interaction, view_event))
         else:
             msg = "Cannot add players after the event has started."
