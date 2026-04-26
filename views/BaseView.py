@@ -33,17 +33,23 @@ class BaseView(discord.ui.View):
         msg_view.message = msg
         if isinstance(msg_view, BasePermView):
             State.set_eventView(interaction.channel.id, msg_view)
+        elif isinstance(msg_view, BaseTempView):
+            msg_view.start_timeout()
         return msg
 
     async def defer_response(self, interaction: discord.Interaction):
         if not interaction.response.is_done():
             await interaction.response.defer(ephemeral=True)
 
+    def build_embed(self):
+        return None
+    
 class BaseTempView(BaseView):
     """Short-lived ephemeral views that auto-delete."""
     def __init__(self, timeout=30, message=None, cancel_btn=True, parent_view=None):
         super().__init__(timeout=timeout, message=message)
         self.parent_view = parent_view
+        self._timeout_task = None
 
         if cancel_btn:
             cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.grey, row=4)
@@ -52,9 +58,6 @@ class BaseTempView(BaseView):
 
     async def send_message(self, interaction: discord.Interaction, content: str=None, view=None):
         return await self.mng_send_message(interaction, content=content, view=view, original_response=self.message)
-
-    def build_embed(self):
-        return None
 
     async def on_timeout(self):
         if self.message:
@@ -65,8 +68,22 @@ class BaseTempView(BaseView):
         if self.parent_view:
             self.parent_view.process_end()
 
+    def start_timeout(self):
+        if self._timeout_task:
+            self._timeout_task.cancel()
+        self._timeout_task = asyncio.create_task(self._run_timeout())
+
+    async def _run_timeout(self):
+        try:
+            await asyncio.sleep(self.timeout)
+            await self.on_timeout()
+        except asyncio.CancelledError:
+            pass
+
     async def dismiss(self):
         self.stop()
+        if self._timeout_task:
+            self._timeout_task.cancel()
         await self.on_timeout()
 
     async def no_callback(self, interaction: discord.Interaction):
