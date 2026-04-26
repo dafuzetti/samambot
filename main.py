@@ -204,12 +204,10 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# patronizar mensagens de resposta na main
-# hilight no nome do jogador que ganhou
+# mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal msgs main tudo
 # report event quendo nao presente
-# mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal
 # State. realmente necessario?
-# my open games event summary 
+# single operation for discord?
 # remove all team A/B e criar eventos individuais
 
 # creating event: start event adicionar placeholders

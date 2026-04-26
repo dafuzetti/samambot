@@ -57,4 +57,7 @@ class Match:
     def __str__(self):
         if self.wins_a == 0 and self.wins_b == 0:
             return f"{self.player_a.get_name()} - {self.player_b.get_name()}"
-        return f"{self.player_a.get_name()} {self.wins_a}-{self.wins_b} {self.player_b.get_name()}"
+        
+        name_a = f"__{self.player_a.get_name()}__" if self.wins_a > self.wins_b else self.player_a.get_name()
+        name_b = f"__{self.player_b.get_name()}__" if self.wins_b > self.wins_a else self.player_b.get_name()
+        return f"{name_a} {self.wins_a}-{self.wins_b} {name_b}"
