@@ -4,15 +4,15 @@ import discord
 from views.BaseView import BaseTempView
 
 class MyMatchesView(BaseTempView):
-    def __init__(self, rows):
-        super().__init__(cancel_btn=False)
+    def __init__(self, interaction: discord.Interaction, rows, parent_view=None, message=None):
+        super().__init__(parent_view=parent_view, message=message, cancel_btn=False)
         self.rows = rows
-        self.has_embedded_message = True
+        self.interaction = interaction
 
-    def build_embed(self, interaction):
+    def build_embed(self):
         grouped = self.group_matches()
         total_matches = 0
-        user = interaction.user
+        user = self.interaction.user
         try:
             if len(self.rows) > 0:
                 embed = discord.Embed(title=f"{user.display_name} Open Games:")
@@ -26,13 +26,13 @@ class MyMatchesView(BaseTempView):
                         total_matches += len(events)
 
                         events_str = ", ".join(
-                            self.get_event_channel_link(interaction.guild, season, e)
+                            self.get_event_channel_link(self.interaction.guild, season, e)
                             for e in events
                         )
 
                         name_cat = "No season"
                         if season is not None:
-                            category = interaction.guild.get_channel(int(season))
+                            category = self.interaction.guild.get_channel(int(season))
                             if isinstance(category, discord.CategoryChannel):
                                 name_cat = category.name
 

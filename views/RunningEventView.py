@@ -1,4 +1,3 @@
-import asyncio
 import discord
 
 import db.db_reports as db_reports
@@ -11,7 +10,7 @@ from views.MyMatchesView import MyMatchesView
 from classes.Event import Event
 
 class RunningEventView(BasePermView):
-    def __init__(self, event: Event, interaction: discord.Interaction = None):
+    def __init__(self, interaction: discord.Interaction = None, event: Event = None):
         super().__init__()
         self.event = event
         self.processing_message = "⏳ Event is being closed."
@@ -23,11 +22,11 @@ class RunningEventView(BasePermView):
         embed = self.print_event_started()
         return embed
 
-    async def update_message(self, event: Event = None):
+    async def update_message(self, interaction: discord.Interaction, event: Event = None):
         if event is not None:
             self.event = event
         if self.message is not None:
-            await self.message.edit(embed=self.build_embed(), view=self)
+            await self.send_message(interaction, view=self, original_response=self.message)
 
     def print_event_started(self):
         str_title = f"__**Event:**__ {self.event.get_event_name()}  {self.season_name}"
@@ -55,10 +54,9 @@ class RunningEventView(BasePermView):
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.defer_response(interaction)
-        await self.send_message(interaction, "Fetching your open games...")
+        msg = await self.send_message(interaction, "Fetching your open games...")
         my_open_matches = db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention)
-        await self.send_message(interaction, view=MyMatchesView(my_open_matches))
+        await self.send_message(interaction, view=MyMatchesView(interaction, my_open_matches), original_response=msg)
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -66,6 +64,6 @@ class RunningEventView(BasePermView):
             return
         
         if self.event.in_event(interaction.user.mention):
-            await self.send_message(interaction, view=ReportResultView(interaction=interaction, event_data=self.event, parent_view=self))
+            await self.send_message(interaction, view=ReportResultView(interaction, event_data=self.event, parent_view=self))
         else:
             await self.send_message(interaction, "You are not in the event.\nReport a match for other players by using /result")

@@ -25,7 +25,7 @@ async def create_event(interaction: discord.Interaction):
         try:
             event_data = db_event.find_event(interaction.guild.id, interaction.channel.id)
             if event_data is not None:
-                view_event = RunningEventView(interaction=interaction, event=event_data)
+                view_event = RunningEventView(interaction, event=event_data)
             else:
                 msg = "Event created."
                 view_event = CreatingEventView()
@@ -89,7 +89,7 @@ async def save_result(interaction: discord.Interaction, winner: discord.User, lo
         if isinstance(view_event, RunningEventView):
             view_event.event.set_matches(event_data.get_matches())
         else:
-            view_event = RunningEventView(interaction=interaction, event=event_data)
+            view_event = RunningEventView(interaction, event=event_data)
             State.set_eventView(interaction.channel.id, view_event)
     msg = return_message(msg, await event_message(interaction, view_event))
     return msg
@@ -145,9 +145,9 @@ async def result(interaction: discord.Interaction, winner: discord.User, loser: 
 @ tree.command(name='games', description='Return missing matches from all events.')
 async def clean(interaction: discord.Interaction, user: discord.Member = None):
     await interaction.response.defer(ephemeral=True)
-    view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
+    view = MyMatchesView(interaction, db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
                                                  user.mention if user else interaction.user.mention))
-    embed_built = await view.build_embed(interaction, user if user else interaction.user)
+    embed_built = await view.build_embed()
     await interaction.followup.send(embed=embed_built, ephemeral=True)
 
 @ tree.command(name='history', description='Event list or history details for specific events.')
@@ -164,7 +164,7 @@ async def history(interaction: discord.Interaction, event_id: int = None):
             msg = "Event not found."
         else:
             if event_data.victory is not None:
-                view_hist = RunningEventView(interaction=interaction,event=event_data)
+                view_hist = RunningEventView(interaction, event=event_data)
             else:
                 msg = "Event still active."
 

@@ -1,5 +1,7 @@
 import asyncio
 import discord
+from classes.State import State
+import db.db_event as db_event
 
 class BaseView(discord.ui.View):
     def __init__(self, timeout=None, message=None):
@@ -12,15 +14,34 @@ class BaseView(discord.ui.View):
         self.add_item(button)
         return button
 
-    async def send(self, interaction: discord.Interaction, content: str, ephemeral=False, **kwargs):
-        await interaction.response.defer(ephemeral=ephemeral)
-        self.message = await interaction.followup.send(
-            content, view=self, ephemeral=ephemeral, wait=True, **kwargs
-        )
+    async def mng_send_message(self, interaction: discord.Interaction, content: str=None, view=None, original_response: discord.Message=None):
+        await self.defer_response(interaction)
+        msg = None
+        msg_view = BaseTempView(cancel_btn=False) if view is None or not isinstance(view, BaseView) else view
+        if original_response:
+            try:
+                msg = await original_response.edit(content=content, embed=msg_view.build_embed(), view=msg_view)
+            except discord.NotFound:
+                msg = None
+
+        if not msg:
+            if isinstance(msg_view, BasePermView):
+                msg = await interaction.channel.send(content=content, embed=msg_view.build_embed(), view=msg_view)
+            else:
+                msg = await interaction.followup.send(content=content, embed=msg_view.build_embed(), ephemeral=True, view=msg_view)
+
+        msg_view.message = msg
+        if isinstance(msg_view, BasePermView):
+            State.set_eventView(interaction.channel.id, msg_view)
+        return msg
+
+    async def defer_response(self, interaction: discord.Interaction):
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
 
 class BaseTempView(BaseView):
     """Short-lived ephemeral views that auto-delete."""
-    def __init__(self, timeout=60, message=None, cancel_btn=True, parent_view=None):
+    def __init__(self, timeout=30, message=None, cancel_btn=True, parent_view=None):
         super().__init__(timeout=timeout, message=message)
         self.parent_view = parent_view
 
@@ -29,24 +50,27 @@ class BaseTempView(BaseView):
             cancel_button.callback = self.no_callback
             self.add_item(cancel_button)
 
-    def build_embed(self, interaction):
+    async def send_message(self, interaction: discord.Interaction, content: str=None, view=None):
+        return await self.mng_send_message(interaction, content=content, view=view, original_response=self.message)
+
+    def build_embed(self):
         return None
 
-    async def on_timeout(self, interaction: discord.Interaction):
+    async def on_timeout(self):
         if self.message:
             try:
                 await self.message.delete()
             except discord.NotFound:
                 pass
         if self.parent_view:
-            self.parent_view.process_end(interaction.user.mention)
+            self.parent_view.process_end()
 
-    async def dismiss(self, interaction: discord.Interaction):
+    async def dismiss(self):
         self.stop()
         await self.on_timeout()
 
     async def no_callback(self, interaction: discord.Interaction):
-        await self.dismiss(interaction)
+        await self.dismiss()
 
 class BasePermView(BaseView):
     """Permanent views that persist indefinitely."""
@@ -54,8 +78,6 @@ class BasePermView(BaseView):
         super().__init__(timeout=None, message=message)
         self.processing_player = None  # Flag to prevent multiple simultaneous starts
         self.processing_message = "⏳ Processing... Please wait."
-        self.reply_message = None
-        self.delete_task = None
 
     def process_start(self, player_tag):
         self.processing_player = player_tag
@@ -65,13 +87,12 @@ class BasePermView(BaseView):
         if player_tag is None or (player_tag and self.processing_player == player_tag):
             self.processing_player = None
 
+    async def send_message(self, interaction: discord.Interaction, content: str=None, view=None, original_response=None):
+        return await self.mng_send_message(interaction, content=content, view=view, original_response=original_response)
+
     async def _clear_after(self, delay: int = 120):
         await asyncio.sleep(delay)
         self.process_end()
-
-    async def defer_response(self, interaction: discord.Interaction):
-        if not interaction.response.is_done():
-            await interaction.response.defer(ephemeral=True)
 
     async def is_processing(self, interaction: discord.Interaction):
         if self.processing_player and self.processing_player != interaction.user.mention:
@@ -80,23 +101,3 @@ class BasePermView(BaseView):
     
         await self.defer_response(interaction)
         return False
-
-    async def send_message(self, interaction: discord.Interaction, content: str=None, view=None):
-        msg_view = BaseTempView(cancel_btn=False) if view is None or not isinstance(view, BaseView) else view
-        if self.reply_message:
-            try:
-                await self.reply_message.edit(content=content, embed=msg_view.build_embed(interaction), view=msg_view)
-            except discord.NotFound:
-                self.reply_message = None
-
-        if not self.reply_message:
-            self.reply_message = await interaction.followup.send(content=content, embed=msg_view.build_embed(interaction), ephemeral=True, view=msg_view)
-        msg_view.message = self.reply_message
-        return self.reply_message
-
-    async def refresh(self, content: str, **kwargs):
-        if self.message:
-            try:
-                await self.message.edit(content=content, view=self, **kwargs)
-            except discord.NotFound:
-                pass

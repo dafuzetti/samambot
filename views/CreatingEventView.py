@@ -19,14 +19,14 @@ class CreatingEventView(BasePermView):
     def total_players(self):
         return self.players.len()
 
-    async def add_player(self, player: discord.User, team_a: bool = True):
+    async def add_player(self, interaction: discord.Interaction, player: discord.User, team_a: bool = True):
         self.players.add_team_mate(player_tag=player.mention, team=1 if team_a else 2)
         State.set_player_name(player.mention, player.display_name)
-        await self.update_message()
+        await self.update_message(interaction)
 
-    async def remove_player(self, player_mention):
+    async def remove_player(self, interaction: discord.Interaction, player_mention: str):
         self.players.remove_player_tag(player_mention)
-        await self.update_message()
+        await self.update_message(interaction)
 
     def build_embed(self):
         embed = discord.Embed(title="New Event Lobby")
@@ -34,7 +34,7 @@ class CreatingEventView(BasePermView):
         embed.add_field(name="Team B", value=self.players.get_players_names_col(2), inline=True)
         return embed
 
-    async def update_message(self, clean_btns: bool = False):
+    async def update_message(self, interaction: discord.Interaction, clean_btns: bool = False):
         if clean_btns:
             self.clear_items()
         else:
@@ -52,14 +52,14 @@ class CreatingEventView(BasePermView):
                     item.label = f"Join Team B ({len(self.players.get_players_tags(2))})"
 
         if self.message is not None:
-            await self.message.edit(embed=self.build_embed(), view=self)
+            await self.send_message(interaction, view=self, original_response=self.message)
 
     @discord.ui.button(label="Join Team A (0)", style=discord.ButtonStyle.green, custom_id="team_a")
     async def join_a(self, interaction: discord.Interaction, button: discord.ui.Button):
         if await self.is_processing(interaction):
             return
 
-        await self.add_player(interaction.user)
+        await self.add_player(interaction, player=interaction.user)
 
     @discord.ui.button(label="Join Team B (0)", style=discord.ButtonStyle.blurple, custom_id="team_b")
     async def join_b(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -68,12 +68,12 @@ class CreatingEventView(BasePermView):
         
         # Only for testing purposes
         if interaction.guild.id == 1184558595602391121 and interaction.user.id == 723638398312513586: 
-            await self.add_player(interaction.guild.get_member(690644525177110561), team_a=True)
-            await self.add_player(interaction.guild.get_member(866339429273305098), team_a=True)
-            await self.add_player(interaction.guild.get_member(1184558521459671110), team_a=False)
+            await self.add_player(interaction, player=interaction.guild.get_member(690644525177110561), team_a=True)
+            await self.add_player(interaction, player=interaction.guild.get_member(866339429273305098), team_a=True)
+            await self.add_player(interaction, player=interaction.guild.get_member(1184558521459671110), team_a=False)
         # End of testing purposes
 
-        await self.add_player(interaction.user, team_a=False)
+        await self.add_player(interaction, player=interaction.user, team_a=False)
 
     @discord.ui.button(label="Remove player", style=discord.ButtonStyle.danger, custom_id="drop", disabled=True)
     async def drop(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -97,7 +97,8 @@ class CreatingEventView(BasePermView):
             return 
         
         self.process_start(interaction.user.mention)
-        await self.send_message(interaction, content="⏳ Event starting...")
+        await self.update_message(interaction, clean_btns=True)
+        msg = await self.send_message(interaction, content="⏳ Event starting...")
 
         event=db_event.create_event(
             interaction.guild_id,
@@ -106,10 +107,8 @@ class CreatingEventView(BasePermView):
             interaction.channel.category_id,
             self.players
         )
-        new_view = RunningEventView(interaction=interaction, event=event)
-        new_view.message = await interaction.channel.send(embed=new_view.build_embed(),view=new_view)
-        State.set_eventView(interaction.channel.id, new_view)
-        db_event.update_event_message_id(new_view.event.event_id, new_view.message.id)
+        running_msg = await self.send_message(interaction, content="Event started!", view=RunningEventView(interaction, event=event))
+        db_event.update_event_message_id(event.get_id(), running_msg.id)
         
-        await self.send_message(interaction, content="Event started!")
-        functions.channelnameopen(interaction.channel, new_view.event.get_event_name())
+        await self.send_message(interaction, content="Event started!", original_response=msg)
+        functions.channelnameopen(interaction.channel, event.get_event_name())
