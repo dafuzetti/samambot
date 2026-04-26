@@ -15,7 +15,7 @@ class ReplaceDummyView(BaseTempView):
                 async def callback(interaction: discord.Interaction, player=p):
                     await self.send_message(interaction, content=f"Replacing dummy {player.get_mention()} with {interaction.user.mention}...")
                     event=db_event.replace_player_in_event(self.parent_view.event.guild_id, self.parent_view.event.channel_id, interaction.user.mention,
-                                                     self.parent_view.event.event_id, player.get_mention(), interaction.user.mention)
+                                                            player.get_mention(), interaction.user.mention, event_id=self.parent_view.event.event_id)
                     await self.send_message(interaction, content=f"{player.get_mention()} replaced by dummy {interaction.user.mention}.")
                     await self.parent_view.update_message(interaction, event)
                 

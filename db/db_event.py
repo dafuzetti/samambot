@@ -94,22 +94,25 @@ def save_matches(event_id, matches):
         if conn is not None:
             conn.close()
 
-def replace_player_in_event(guild, channel, user, event_id, old_player, new_player) -> Event:
-    asyncio.create_task(
-        asyncio.to_thread(Sql_Log.log, guild, channel, user, "replace_player", f"{event_id}, {old_player}, {new_player}")
-    )
+def replace_player_in_event(guild, channel, user, old_player, new_player, event_id=None) -> Event:
     conn = None
+    event = event_id
     try:
         conn = db.get_connection()
         with conn.cursor() as cur:
-            Sql_Event.replace_player_in_event(cur, guild, channel, event_id, old_player, new_player)
+            if event is None:
+                event = Sql_Event.find_event(cur, guild, channel)[0]
+            Sql_Event.replace_player_in_event(cur, guild, channel, event, old_player, new_player)
         conn.commit()
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     finally:
         if conn is not None:
             conn.close()
-    return read_event(guild, channel, event_id)
+    asyncio.create_task(
+        asyncio.to_thread(Sql_Log.log, guild, channel, user, "replace_player", f"{event}, {old_player}, {new_player}")
+    )
+    return read_event(guild, channel, event)
 
 def new_team(event_id, player_list, team):
     if event_id is None:
