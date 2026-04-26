@@ -15,10 +15,11 @@ class Players:
         return [p for p in self.players if (team is None or p.team == team)]
 
     def get_players_tags(self, team=None) -> list[str]:
-        return [p.get_tag() for p in self.players if (team is None or p.team == team)]
+        return [p.get_mention() for p in self.players if (team is None or p.team == team)]
 
-    def get_players_names(self, team=None) -> list[str]:
-        return [p.get_name() for p in self.players if (team is None or p.team == team)]
+    def get_players_names_col(self, team=None) -> str:
+        players = [p.get_name() for p in self.players if (team is None or p.team == team)]
+        return "\n".join(players) if players else "-"
     
     def get_ready(self):
         return (
@@ -26,10 +27,13 @@ class Players:
             and len(self.get_players_tags(1)) == len(self.get_players_tags(2))
         )
 
-    def add_player(self, player_tag, team, name=None):
+    def add_player(self, player: Player):
+        self.players.append(player)
+
+    def add_team_mate(self, player_tag, team):
         self.remove_player_tag(player_tag)
         if(self.len() < 8 and len(self.get_players_tags(team)) < 4):
-            self.players.append(Player(player_tag=player_tag, team=team, name=name))
+            self.players.append(Player(player_tag=player_tag, team=team))
 
     def remove_player_tag(self, player_tag):
         for p in self.players:
@@ -39,13 +43,13 @@ class Players:
                 return True
         return False
 
-    def add_players(self, players_tags, team):
+    def add_team_mates(self, players_tags, team):
         for p in players_tags:
-            self.add_player(p, team)
+            self.add_team_mate(p, team)
 
     def add_teams(self, playersA, playersB):
-        self.add_players(playersA, 1)
-        self.add_players(playersB, 2)
+        self.add_team_mates(playersA, 1)
+        self.add_team_mates(playersB, 2)
 
     def len(self):
         return len(self.players)

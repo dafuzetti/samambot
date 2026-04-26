@@ -1,5 +1,4 @@
 from classes.Match import Match
-from classes.Matches import Matches
 
 class Sql_Match:
 
@@ -32,7 +31,7 @@ class Sql_Match:
         return cursor.rowcount
 
     @staticmethod
-    def read_matches_by_event(cursor, event_id) -> Matches:
+    def read_matches_by_event(cursor, event_id) -> list[Match]:
         query = f"""
             SELECT
                 m.id as {Match.COL_ID},
@@ -59,4 +58,4 @@ class Sql_Match:
             dict(zip(columns, row))
             for row in cursor.fetchall()
         ]
-        return Matches(rows)
+        return [Match(**row) for row in rows]
