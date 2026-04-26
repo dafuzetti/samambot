@@ -62,7 +62,7 @@ class RunningEventView(BasePermView):
         if self.event.in_event(interaction.user.mention):
             await self.send_message(interaction, "Yeah... you are!")
         else:
-            await self.send_message(interaction, "We all knew! Which dummy are you?", view=ReplaceDummyView(self.event.get_players()))
+            await self.send_message(interaction, "We all knew! Which dummy are you?", view=ReplaceDummyView(self.event.get_players(), parent_view=self))
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):

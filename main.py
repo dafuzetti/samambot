@@ -1,12 +1,14 @@
 import discord
 from discord.ext import commands
 from decouple import config
+import asyncio
 
 from views.CreatingEventView import CreatingEventView
 from views.RunningEventView import RunningEventView
 from views.MyMatchesView import MyMatchesView
 import db.db_event as db_event
 import db.db_reports as db_reports
+import db.sql_log as Sql_Log
 import functions
 from classes.State import State
 
@@ -68,6 +70,25 @@ async def add_player(interaction: discord.Interaction, user: discord.Member, tea
     else:
         msg = "No event found. Use /event to create a new event."
     await interaction.followup.send(msg, ephemeral=True)
+
+@tree.command(name="replace_player", description="Replace a player in an event (Admin only).")
+async def replace_player(interaction: discord.Interaction, event_id: int, old_player: discord.Member, new_player: discord.Member):
+    await interaction.response.defer(ephemeral=True)
+    
+    if discord.utils.get(interaction.guild.roles, name="Samambot Admin") not in interaction.user.roles:
+        await interaction.followup.send("Only users with 'Samambot Admin' role can replace players", ephemeral=True)
+        return
+    
+    event_data = db_event.replace_player_in_event(
+        interaction.guild.id, interaction.channel.id, interaction.user.mention, event_id, old_player.mention, new_player.mention)
+    
+    if event_data is None:
+        msg = "Event not found."
+    
+    msg = return_message(f"{new_player.mention} added to event.", await event_message(interaction))
+
+    await interaction.followup.send(msg, ephemeral=True)
+
 
 @ tree.command(name='history', description='Event list or history details for specific events.')
 async def history(interaction: discord.Interaction, event_id: int = None):
