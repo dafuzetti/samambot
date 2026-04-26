@@ -57,7 +57,8 @@ class BaseTempView(BaseView):
             self.add_item(cancel_button)
 
     async def send_message(self, interaction: discord.Interaction, content: str=None, view=None):
-        return await self.mng_send_message(interaction, content=content, view=view, original_response=self.message)
+        return await self.mng_send_message(interaction, content=content, view=view, 
+                                           original_response=None if isinstance(view, BasePermView) else self.message)
 
     async def on_timeout(self):
         if self.message:

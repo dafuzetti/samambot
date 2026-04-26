@@ -1,11 +1,10 @@
 import asyncio
 
 import discord
-import functions
 import db.db_event as db_event
 
 from views.BaseView import BasePermView
-from views.RunningEventView import RunningEventView
+from views.ConfirmStartView import ConfirmStartView
 from views.RemovePlayerView import RemovePlayerView
 from classes.Players import Players
 from classes.State import State
@@ -97,18 +96,4 @@ class CreatingEventView(BasePermView):
             return 
         
         self.process_start(interaction.user.mention)
-        await self.update_message(interaction, clean_btns=True)
-        msg = await self.send_message(interaction, content="⏳ Event starting...")
-
-        event=db_event.create_event(
-            interaction.guild_id,
-            interaction.channel_id,
-            interaction.user.mention,
-            interaction.channel.category_id,
-            self.players
-        )
-        running_msg = await self.send_message(interaction, content="Event started!", view=RunningEventView(interaction, event=event))
-        db_event.update_event_message_id(event.get_id(), running_msg.id)
-        
-        await self.send_message(interaction, content="Event started!", original_response=msg)
-        functions.channelnameopen(interaction.channel, event.get_event_name())
+        await self.send_message(interaction, content="Starting the event cannot be undone. Are you sure?", view=ConfirmStartView(self))
