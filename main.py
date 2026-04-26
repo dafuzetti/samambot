@@ -72,20 +72,25 @@ async def add_player(interaction: discord.Interaction, user: discord.Member, tea
     await interaction.followup.send(msg, ephemeral=True)
 
 @tree.command(name="replace_player", description="Replace a player in an event (Admin only).")
-async def replace_player(interaction: discord.Interaction, event_id: int, old_player: discord.Member, new_player: discord.Member):
+async def replace_player(interaction: discord.Interaction, old_player: discord.Member, new_player: discord.Member):
     await interaction.response.defer(ephemeral=True)
-    
     if discord.utils.get(interaction.guild.roles, name="Samambot Admin") not in interaction.user.roles:
         await interaction.followup.send("Only users with 'Samambot Admin' role can replace players", ephemeral=True)
         return
     
+    view_event = State.get_eventView(interaction.channel.id)
     event_data = db_event.replace_player_in_event(
-        interaction.guild.id, interaction.channel.id, interaction.user.mention, event_id, old_player.mention, new_player.mention)
-    
-    if event_data is None:
+        interaction.guild.id, interaction.channel.id, interaction.user.mention, old_player.mention, new_player.mention)
+
+    if event_data is not None:
+        if isinstance(view_event, RunningEventView):
+            view_event.event = event_data
+        else:
+            view_event = RunningEventView(interaction, event=event_data)
+            State.set_eventView(interaction.channel.id, view_event)
+        msg = return_message(f"{new_player.mention} added to event.", await event_message(interaction))
+    else:
         msg = "Event not found."
-    
-    msg = return_message(f"{new_player.mention} added to event.", await event_message(interaction))
 
     await interaction.followup.send(msg, ephemeral=True)
 
