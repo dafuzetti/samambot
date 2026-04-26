@@ -21,6 +21,9 @@ class Event:
     def __repr__(self):
         return f"<Event id={self.channel_id}>"
 
+    def have_dummyes(self) -> bool:
+        return any(m.have_dummy() for m in self.matches)
+
     def set_matches(self, matches: list[Match]):
         self.matches = matches if matches is not None else []
 

@@ -27,6 +27,10 @@ class Players:
             and len(self.get_players_tags(1)) == len(self.get_players_tags(2))
         )
 
+    def add_dummyes_to_fill(self, seats=8):
+        while self.len() < seats:
+            self.add_team_mate(player_tag=f"{Player.DUMMY_PREFIX}{self.len() + 1}", team=1 if len(self.get_players(team=1)) <= len(self.get_players(team=2)) else 2)
+
     def add_player(self, player: Player):
         self.players.append(player)
 

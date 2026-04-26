@@ -4,6 +4,7 @@ import db.db_reports as db_reports
 
 from views.BaseView import BasePermView
 from views.ConfirmCloseView import ConfirmCloseView
+from views.ReplaceDummyView import ReplaceDummyView
 from views.ReportResultView import ReportResultView
 from views.MyMatchesView import MyMatchesView
 
@@ -15,6 +16,8 @@ class RunningEventView(BasePermView):
         self.event = event
         self.processing_message = "⏳ Event is being closed."
         self.season_name = "" if interaction is None else getattr(getattr(interaction.channel, "category", None), "name", "")
+        if not self.event.have_dummyes():
+            self.remove_item(self.replace_dummy)
 
     def build_embed(self):
         if self.event.victory is not None:
@@ -51,6 +54,15 @@ class RunningEventView(BasePermView):
         else:
             self.process_start(interaction.user.mention)
             await self.send_message(interaction, content="This will permanently close the event. Are you sure?", view=ConfirmCloseView(self))
+
+    @discord.ui.button(label="I'm a dummy!", style=discord.ButtonStyle.gray, custom_id="replace_dummy")
+    async def replace_dummy(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if await self.is_processing(interaction):
+            return
+        if self.event.in_event(interaction.user.mention):
+            await self.send_message(interaction, "Yeah... you are!")
+        else:
+            await self.send_message(interaction, "We all knew! Which dummy are you?", view=ReplaceDummyView(self.event.get_players(), parent_view=self))
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
