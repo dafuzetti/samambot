@@ -1,7 +1,7 @@
 import discord
 from views.BaseView import BaseTempView
 from classes.Player import Player
-from db import db_event
+import db.db_event as db_event
 
 class ReplaceDummyView(BaseTempView):
     def __init__(self, players: list[Player], parent_view=None, message=None):

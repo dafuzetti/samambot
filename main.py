@@ -1,5 +1,4 @@
 import discord
-from discord.app_commands import command
 from discord.ext import commands
 from decouple import config
 import asyncio
@@ -236,7 +235,6 @@ async def on_ready():
 
 bot.run(TOKEN)
 
-# visualizar jogos encerrados no eventg de maneira mais facil
 # histoy not working outside of seasons - it should
 # season channel to keep score updated e comandos gerais da season (fechar, mudar tipo, encontrar eventos...)
 # comandos de estatistica 
