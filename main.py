@@ -230,27 +230,28 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
-# remover dummyes estatisticas de eventos
-# trocar dummmy por users
+
 # histoy not working outside of seasons - it should
-# mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal msgs main tudo
-# report event quendo nao presente
-# State. realmente necessario?
-# single operation for discord?
-# remove all team A/B e criar eventos individuais
 
+# visualizar jogos encerrados no eventg de maneira mais facil
 # comandos de estatistica 
+# remover dummyes estatisticas de eventos
 # public message when event gets closed? when last player reports result to ask for confirmation
-# arquivo de fechamento de event 
 # move here / liberar para eventos encerrados? bloquear por usuario?
+# report event quendo nao presente
 
+# tipoe de evento: team, individual, round robin or 3 rounds 
+# remove all team A/B e criar eventos individuais
 # blocar edicao de eventos encerrados db
 # to no play 
 # Guardar nome das seasons?
 # close season? 
 # season report #1, #2, #3 
 # Season type team/individual
-# move read_events para dentro das comm
 # Deletar evento?  
 # remover classes.propriety access
 # salvar nomes dos jogadores no banco de dados
+
+# mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal msgs main tudo
+# State. realmente necessario?
+# single operation for discord?
