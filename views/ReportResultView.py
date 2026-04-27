@@ -2,7 +2,7 @@ import discord
 from views.BaseView import BaseTempView
 from classes.Match import Match
 from classes.Event import Event
-from db import db_event
+import db.db_event as db_event
 
 class ReportResultView(BaseTempView):
     def __init__(self, interaction: discord.Interaction, event_data: Event, parent_view=None, message=None):
