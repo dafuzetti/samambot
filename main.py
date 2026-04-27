@@ -226,31 +226,34 @@ async def on_ready():
 
         await event_message(interaction=None, view=view)
         bot.add_view(view)
-    
+
+    commands = await tree.fetch_commands()
+    for command in commands:
+        State.set_command(command)
+
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
-# remover dummyes estatisticas de eventos
-# trocar dummmy por users
+
 # histoy not working outside of seasons - it should
-# mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal msgs main tudo
-# report event quendo nao presente
-# State. realmente necessario?
-# single operation for discord?
-# remove all team A/B e criar eventos individuais
-
+# season channel to keep score updated e comandos gerais da season (fechar, mudar tipo, encontrar eventos...)
 # comandos de estatistica 
-# public message when event gets closed? when last player reports result to ask for confirmation
-# arquivo de fechamento de event 
+# remover dummyes estatisticas de eventos
 # move here / liberar para eventos encerrados? bloquear por usuario?
+# report event quendo nao presente
 
+# tipoe de evento: team, individual, round robin or 3 rounds 
+# remove all team A/B e criar eventos individuais
 # blocar edicao de eventos encerrados db
 # to no play 
 # Guardar nome das seasons?
 # close season? 
 # season report #1, #2, #3 
 # Season type team/individual
-# move read_events para dentro das comm
 # Deletar evento?  
 # remover classes.propriety access
 # salvar nomes dos jogadores no banco de dados
+
+# mudar event_message function para ser 3 funcoes, 2 chamadas 1 corpo principal msgs main tudo
+# State. realmente necessario?
+# single operation for discord?

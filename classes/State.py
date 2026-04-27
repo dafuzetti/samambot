@@ -3,6 +3,15 @@ import discord
 class State:
     events = {}
     players = {}
+    commands = {}
+
+    @classmethod
+    def set_command(cls, command):
+        State.commands[command.name] = command.id
+
+    @classmethod
+    def get_command_id(cls, command_name):
+        return State.commands.get(command_name)
 
     @classmethod
     def get_eventView(cls, channel_id):

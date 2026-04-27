@@ -1,7 +1,7 @@
 import discord
 from views.BaseView import BaseTempView
 from classes.Player import Player
-from db import db_event
+import db.db_event as db_event
 
 class ReplaceDummyView(BaseTempView):
     def __init__(self, players: list[Player], parent_view=None, message=None):
@@ -13,7 +13,7 @@ class ReplaceDummyView(BaseTempView):
                 button = discord.ui.Button(label=str(p), style=discord.ButtonStyle.grey, row=p.get_team())
 
                 async def callback(interaction: discord.Interaction, player=p):
-                    await self.send_message(interaction, content=f"Replacing dummy {player.get_mention()} with {interaction.user.mention}...")
+                    await self.send_message(interaction, content=f"Replacing {player.get_mention()} with {interaction.user.mention}...")
                     event=db_event.replace_player_in_event(self.parent_view.event.guild_id, self.parent_view.event.channel_id, interaction.user.mention,
                                                             player.get_mention(), interaction.user.mention, event_id=self.parent_view.event.event_id)
                     await self.send_message(interaction, content=f"{player.get_mention()} replaced by dummy {interaction.user.mention}.")

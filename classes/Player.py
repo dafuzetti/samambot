@@ -21,7 +21,7 @@ class Player:
         if self.get_name() != self.get_mention():
             return f"{self.get_name()}{self.get_mention()} ({self.get_team_name()})"
         else:
-            return f"{self.get_mention()} Team:{self.get_team_name()}"
+            return f"{self.get_mention()} ({self.get_team_name()})"
 
     def is_dummy(self) -> bool:
         return self.get_mention().startswith(Player.DUMMY_PREFIX)
@@ -39,7 +39,7 @@ class Player:
         return self.team
     
     def get_team_name(self):
-        return Player.TEAM_MAP.get(self.get_team(), "Unknown")
+        return Player.TEAM_MAP.get(self.get_team(), self.get_team())
     
     def __hash__(self):
         return hash(self.get_mention()) 
