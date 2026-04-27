@@ -1,3 +1,5 @@
+from discord import player
+
 from classes.Match import Match
 from classes.Player import Player
 
@@ -84,8 +86,21 @@ class Event:
         if team is not None:
             if self.get_victory() is not None:
                 prefix = 'WINNERS: ' if self.get_victory() == team else 'losers:'
-        return prefix + ', '.join(p.get_mention() for p in players)
+        return prefix + ', '.join(self.get_player_stats(p.get_mention()) for p in players)
     
+    def get_player_stats(self, player_tag):
+        wins = self.get_player_wins(player_tag)
+        losses = self.get_player_losses(player_tag)
+        if wins == 0 and losses == 0:
+            return f"{player_tag}"
+        return f"{player_tag} {wins}/{losses}"
+
+    def get_player_wins(self, player_tag):
+        return sum(1 for m in self.get_matches(player_tag=player_tag) if (m.get_player().get_mention() == player_tag and m.get_wins() == 2) or (m.get_opponent().get_mention() == player_tag and m.get_losses() == 2))
+
+    def get_player_losses(self, player_tag):
+        return sum(1 for m in self.get_matches(player_tag=player_tag) if (m.get_player().get_mention() == player_tag and m.get_losses() == 2) or (m.get_opponent().get_mention() == player_tag and m.get_wins() == 2))
+
     def get_count_matches(self, played:bool=None):
         if played is None:
             return len(self.matches)
