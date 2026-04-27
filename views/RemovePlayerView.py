@@ -1,30 +1,23 @@
 import discord
+from classes.State import State
+from views.BaseView import BaseTempView
 from classes.Players import Players
 from classes.Player import Player
 
-class RemovePlayerView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction, players: Players):
-        super().__init__(timeout=30)  # optional timeout
-        self.mention = None
-        self.confirmation_interaction = interaction
+class RemovePlayerView(BaseTempView):
+    def __init__(self, interaction: discord.Interaction, players: Players, parent_view=None, message=None):
+        super().__init__(parent_view=parent_view, message=message)
 
         for ploop in players.get_players():
             p:Player = ploop
-            button = discord.ui.Button(label=p.get_name(), style=discord.ButtonStyle.red)
+            button = discord.ui.Button(label=p.get_name(), 
+                                       style=discord.ButtonStyle.red if p.get_mention() != interaction.user.mention else discord.ButtonStyle.green)
 
-            async def callback(interaction, player=p):
-                await interaction.response.defer()
-                self.mention = player.get_mention()
-                self.stop()
+            async def callback(interaction: discord.Interaction, player=p):
+                await self.defer_response(interaction)
+
+                await self.parent_view.remove_player(interaction, player.get_mention())                
+                await self.send_message(interaction, content=f"Player {player.get_mention()} removed.", view=None)
             
             button.callback = callback
             self.add_item(button)
-
-        # No one button
-        no_button = discord.ui.Button(label="No one", style=discord.ButtonStyle.green)
-        no_button.callback = self.no_callback
-        self.add_item(no_button)
-
-    async def no_callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        self.stop()  # stop the view to end interaction

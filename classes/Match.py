@@ -16,17 +16,11 @@ class Match:
         self.player_b = Player(player_tag=player_b, team=team_b)
         self.wins_b = wins_b
 
-    def set_result(self, wins_a, wins_b):
-        self.wins_a = wins_a
-        self.wins_b = wins_b
-
-    def have_names(self):
-        if self.player_a.get_mention() == self.player_a.get_name():
-            return False
-        return True
-
-    def hava_player(self, player_tag):
+    def have_player(self, player_tag):
         return player_tag == self.player_a.get_mention() or player_tag == self.player_b.get_mention()
+
+    def have_dummy(self) -> bool:
+        return self.player_a.is_dummy() or self.player_b.is_dummy()
 
     def get_player(self) -> Player:
         return self.player_a
@@ -45,10 +39,6 @@ class Match:
 
     def set_losses(self, losses):
         self.wins_b = losses
-
-    def set_names(self, player_a_name, player_b_name):
-        self.player_a.set_name(player_a_name)
-        self.player_b.set_name(player_b_name)
 
     def get_vs_label(self, player_tag):
         if self.wins_a == 0 and self.wins_b == 0:
@@ -69,5 +59,8 @@ class Match:
     
     def __str__(self):
         if self.wins_a == 0 and self.wins_b == 0:
-            return f"{self.player_a.get_name()} vs {self.player_b.get_name()}"
-        return f"{self.player_a.get_name()} ({self.wins_a}) vs ({self.wins_b}) {self.player_b.get_name()}"
+            return f"{self.player_a.get_name()} - {self.player_b.get_name()}"
+        
+        name_a = f"__{self.player_a.get_name()}__" if self.wins_a > self.wins_b else self.player_a.get_name()
+        name_b = f"__{self.player_b.get_name()}__" if self.wins_b > self.wins_a else self.player_b.get_name()
+        return f"{name_a} {self.wins_a}-{self.wins_b} {name_b}"

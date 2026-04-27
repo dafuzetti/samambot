@@ -133,3 +133,47 @@ class Sql_Event:
         """
         cursor.execute(query, (message_id, event_id,))
         return cursor.rowcount
+    
+    @staticmethod
+    def replace_player_in_event(cursor, guild, channel, event_id, old_player, new_player):
+        """Replace old_player with new_player in teams and matches, validated by guild and channel"""
+        query1 = """
+            UPDATE teams 
+            SET player = %s 
+            FROM event 
+            WHERE teams.event = event.id 
+            AND event.guild = %s 
+            AND event.channel = %s 
+            AND teams.event = %s 
+            AND teams.player = %s
+            AND event.victory IS NULL
+        """
+        cursor.execute(query1, (new_player, str(guild), str(channel), event_id, old_player))
+        
+        query2 = """
+            UPDATE match 
+            SET player = %s 
+            FROM event 
+            WHERE match.event = event.id 
+            AND event.guild = %s 
+            AND event.channel = %s 
+            AND match.event = %s 
+            AND match.player = %s
+            AND event.victory IS NULL
+        """
+        cursor.execute(query2, (new_player, str(guild), str(channel), event_id, old_player))
+        
+        query3 = """
+            UPDATE match 
+            SET opponent = %s 
+            FROM event 
+            WHERE match.event = event.id 
+            AND event.guild = %s 
+            AND event.channel = %s 
+            AND match.event = %s 
+            AND match.opponent = %s
+            AND event.victory IS NULL
+        """
+        cursor.execute(query3, (new_player, str(guild), str(channel), event_id, old_player))
+        
+        return cursor.rowcount

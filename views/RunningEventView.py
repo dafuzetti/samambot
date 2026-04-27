@@ -1,28 +1,23 @@
-import math
 import discord
 
-import db.db_event as db_event
 import db.db_reports as db_reports
-import functions
 
+from views.BaseView import BasePermView
 from views.ConfirmCloseView import ConfirmCloseView
+from views.ReplaceDummyView import ReplaceDummyView
 from views.ReportResultView import ReportResultView
 from views.MyMatchesView import MyMatchesView
 
-from classes.Match import Match
 from classes.Event import Event
-from classes.State import State
 
-class RunningEventView(discord.ui.View):
-    def __init__(self, event: Event, interaction: discord.Interaction = None):
-        super().__init__(timeout=None)
-        self.message = None
-        self.processing_player = None  # Flag to prevent multiple simultaneous actions
+class RunningEventView(BasePermView):
+    def __init__(self, interaction: discord.Interaction = None, event: Event = None):
+        super().__init__()
         self.event = event
-        self.guild_id = event.guild_id if interaction is None else interaction.guild.id
-        self.channel_id = event.channel_id if interaction is None else interaction.channel.id
+        self.processing_message = "⏳ Event is being closed."
         self.season_name = "" if interaction is None else getattr(getattr(interaction.channel, "category", None), "name", "")
-        
+        if not self.event.have_dummyes():
+            self.remove_item(self.replace_dummy)
 
     def build_embed(self):
         if self.event.victory is not None:
@@ -30,142 +25,57 @@ class RunningEventView(discord.ui.View):
         embed = self.print_event_started()
         return embed
 
-    async def is_processing(self):
-        if self.processing_player:
-            return True, f"⏳ Event is being closed by: {self.processing_player}"
-        return False, None
-
-    async def update_message(self):
+    async def update_message(self, interaction: discord.Interaction, event: Event = None):
+        if event is not None:
+            self.event = event
         if self.message is not None:
-            await self.message.edit(embed=self.build_embed(), view=self)
-    
+            await self.send_message(interaction, view=self, original_response=self.message)
+
+    def print_event_started(self):
+        str_title = f"__**Event:**__ {self.event.get_event_name()}  {self.season_name}"
+        embed = discord.Embed(title=str_title, color=0x03f8fc)
+
+        embed.description = f'Event ID: {str(self.event.get_id())}'
+        embed.add_field(name='Team A ' + self.event.get_team_emoji(1),
+                        value=f'{self.event.print_players(team=1)}\nWin: {self.event.get_wins(team=1)}', inline=False)
+        embed.add_field(name='Team B ' + self.event.get_team_emoji(2),
+                        value=f'{self.event.print_players(team=2)}\nWin: {self.event.get_wins(team=2)}', inline=False)
+        embed.add_field(name=f'Pairings: {self.event.get_wins(team=1) + self.event.get_wins(team=2)}/{len(self.event.get_matches())}',
+                        value=f'{self.event.print_matches()}', inline=False)
+        return embed
+
     @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")
     async def close_event(self, interaction: discord.Interaction, button: discord.ui.Button):
-        processing, msg = await self.is_processing()
-        if processing:
-            await interaction.response.send_message(msg, ephemeral=True)
+        if await self.is_processing(interaction):
             return
 
-        role = discord.utils.get(interaction.guild.roles, name="Samambot Admin")
-        if role in interaction.user.roles:
-            self.processing_player = interaction.user.mention
-            confirm_view = ConfirmCloseView(interaction)
-            await interaction.response.send_message(
-                "Are you sure you want to close the event?", view=confirm_view, ephemeral=True
-            )
-
-            await confirm_view.wait()
-
-            if not confirm_view.confirmed:
-                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed canceled.", view=None)
-            else:
-                #await self.update_message()
-                State.remove_event(interaction.channel.id)
-                self.event = db_event.close_event(self.guild_id, self.channel_id, interaction.user.mention, self.event.event_id)
-                await self.update_message()
-                await confirm_view.confirmation_interaction.edit_original_response(content="Event closed!", view=None)
-                functions.channelnameclose(interaction.channel)
-            self.processing_player = None
+        if discord.utils.get(interaction.guild.roles, name="Samambot Admin") not in interaction.user.roles:
+            await self.send_message(interaction, content="Only users with 'Samambot Admin' role can close events")
         else:
-            await interaction.response.send_message(
-                "Only users with 'Samambot Admin' role can close events", ephemeral=True
-            )
+            self.process_start(interaction.user.mention)
+            await self.send_message(interaction, content="This will permanently close the event. Are you sure?", view=ConfirmCloseView(self))
+
+    @discord.ui.button(label="I'm a dummy!", style=discord.ButtonStyle.gray, custom_id="replace_dummy")
+    async def replace_dummy(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if await self.is_processing(interaction):
+            return
+        if self.event.in_event(interaction.user.mention):
+            await self.send_message(interaction, "Yeah... you are!")
+        else:
+            await self.send_message(interaction, "We all knew! Which dummy are you?", view=ReplaceDummyView(self.event.get_players(), parent_view=self))
 
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
-        view = MyMatchesView(db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention))
-        embed_built = await view.build_embed(interaction, interaction.user)
-        await interaction.followup.send(embed=embed_built, ephemeral=True)
+        msg = await self.send_message(interaction, "Fetching your open games...")
+        my_open_matches = db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention)
+        await self.send_message(interaction, view=MyMatchesView(interaction, my_open_matches), original_response=msg)
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
     async def report_result(self, interaction: discord.Interaction, button: discord.ui.Button):
-        processing, msg = await self.is_processing()
-        player = interaction.user.mention
-        in_event = False
-        if processing:
-            await interaction.response.send_message(msg, ephemeral=True)
+        if await self.is_processing(interaction):
             return
-        for m in self.event.get_matches():
-            if isinstance(m, Match):
-                match: Match = m
-                if not in_event:
-                    in_event = match.hava_player(player)
-                if not match.have_names():
-                    match.set_names(await functions.get_player_name(interaction, match.get_player().get_mention()), 
-                                    await functions.get_player_name(interaction, match.get_opponent().get_mention()))
-
-        if in_event:
-            confirm_view = ReportResultView(interaction=interaction, event_data=self.event)
-            await interaction.response.send_message(
-                "Select your opponent:",
-                view=confirm_view,
-                ephemeral=True
-            )
+        
+        if self.event.in_event(interaction.user.mention):
+            await self.send_message(interaction, view=ReportResultView(interaction, event_data=self.event, parent_view=self))
         else:
-            await interaction.response.send_message(
-                "You are not in the event.\n " \
-                "Report a match for other players by using /result",
-                ephemeral=True
-            )
-
-    def print_event_started(self):
-        list = self.event.get_matches()
-        str_title = f"__**Event:**__ {self.event.get_event_name()}  {self.season_name}"
-        embed = discord.Embed(title=str_title, color=0x03f8fc)
-        count = len(list)
-        matches_desc = ''
-        playersA = ''
-        playersB = ''
-        pos = 0
-        winA = 0
-        winB = 0
-        nrp = math.sqrt(count)
-        toadd = 1
-
-        for m in list:
-            if isinstance(m, Match):
-                match: Match = m
-                pos = pos + 1
-                if str(match.wins_a) == '2':
-                    winA = winA + 1
-                if str(match.wins_b) == '2':
-                    winB = winB + 1
-                if pos == toadd:
-                    playersA = playersA + str(match.get_player().get_name())
-                    playersB = playersB + str(match.get_opponent().get_name())
-                    toadd = toadd + nrp + 1
-                if match.wins_a == 0 and match.wins_b == 0:
-                    matches_desc = matches_desc + str(match.get_player().get_name()) + \
-                        ' - ' + str(match.get_opponent().get_name()) + '\n'
-                else:
-                    matches_desc = matches_desc + str(match.get_player().get_name()) + ' ' + str(match.wins_a) + \
-                        '-' + str(match.wins_b) + ' ' + str(match.get_opponent().get_name()) + '\n'
-
-        emjA = ''
-        emjB = ''
-        labelA = 'Player: '
-        labelB = 'Player: '
-        if str(self.event.get_victory()) == '2':
-            labelB = 'WINNERS: '
-            labelA = 'losers: '
-            emjA = ':skull:'
-            emjB = ':trophy:'
-        elif str(self.event.get_victory()) == '1':
-            labelA = 'WINNERS: '
-            labelB = 'losers: '
-            emjA = ':trophy:'
-            emjB = ':skull:'
-        elif str(self.event.get_victory()) == '0':
-            emjA = '🍕'
-            emjB = '🍕'
-
-        #embed.add_field(name='Event ID: ', value=str(self.event.get_id()), inline=True)
-        embed.description = f'Event ID: {str(self.event.get_id())}'
-        embed.add_field(name='Team A ' + str(emjA),
-                        value=f'{labelA}{playersA}\nWin: {winA}', inline=False)
-        embed.add_field(name='Team B ' + str(emjB),
-                        value=f'{labelB}{playersB}\nWin: {winB}', inline=False)
-        embed.add_field(name=f'Pairings: {winA + winB}/{count}',
-                        value=f'{matches_desc}', inline=False)
-        return embed
+            await self.send_message(interaction, "You are not in the event.\nReport a match for other players by using /result")

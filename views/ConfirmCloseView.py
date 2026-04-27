@@ -1,30 +1,23 @@
 import discord
+import functions
+from classes.State import State
+import db.db_event as db_event
 
-class ConfirmCloseView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction = None):
-        super().__init__(timeout=30)  # optional timeout
-        self.confirmed = False
-        self.confirmation_interaction = interaction
+from views.BaseView import BaseTempView
 
-        # Yes button
-        yes_button = discord.ui.Button(label="Yes", style=discord.ButtonStyle.red)
-        yes_button.callback = self.yes_callback
-        self.add_item(yes_button)
+class ConfirmCloseView(BaseTempView):
+    def __init__(self, parent_view=None, message=None):
+        super().__init__(parent_view=parent_view, message=message)
 
-        # No button
-        no_button = discord.ui.Button(label="No", style=discord.ButtonStyle.gray)
-        no_button.callback = self.no_callback
-        self.add_item(no_button)
+        self.add_button(label="Close Event", callback=self.yes_callback, style=discord.ButtonStyle.red)
 
     async def yes_callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        self.confirmed = True
-        # Update the confirmation message to "Event closed"
-        if self.confirmation_interaction:
-            await self.confirmation_interaction.edit_original_response(content="⏳ Event closing...", view=None)
-        self.stop()  # stop the view to end interaction
+        await self.send_message(interaction, content="⏳ Event closing...", view=None)
 
-    async def no_callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        self.confirmed = False
-        self.stop()  # stop the view to end interaction
+        event = db_event.close_event(interaction.guild.id, interaction.channel.id, interaction.user.mention)
+        await self.parent_view.update_message(interaction, event=event)
+
+        await self.send_message(interaction, content="Event closed!", view=None)
+
+        State.remove_event(interaction.channel.id)
+        functions.channelnameclose(interaction.channel)
