@@ -40,10 +40,11 @@ class RunningEventView(BasePermView):
                         value=f'{self.event.print_players(team=1)}\nWin: {self.event.get_wins(team=1)}', inline=False)
         embed.add_field(name='Team B ' + self.event.get_team_emoji(2),
                         value=f'{self.event.print_players(team=2)}\nWin: {self.event.get_wins(team=2)}', inline=False)
+        if self.event.get_count_matches(played=True) > 0:
+            embed.add_field(name=f'Played: {self.event.get_count_matches(played=True)}/{self.event.get_count_matches()}',
+                            value=f'{self.event.print_matches(played=True)}', inline=False)
         embed.add_field(name=f'Pairings: {self.event.get_count_matches(played=False)}/{self.event.get_count_matches()}',
                         value=f'{self.event.print_matches(played=False)}', inline=False)
-        embed.add_field(name=f'Played: {self.event.get_count_matches(played=True)}/{self.event.get_count_matches()}',
-                        value=f'{self.event.print_matches(played=True)}', inline=False)
         return embed
 
     @discord.ui.button(label="Close event", style=discord.ButtonStyle.red, custom_id="close_event")
