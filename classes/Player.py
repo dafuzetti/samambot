@@ -39,7 +39,7 @@ class Player:
         return self.team
     
     def get_team_name(self):
-        return Player.TEAM_MAP.get(self.get_team(), "Unknown")
+        return Player.TEAM_MAP.get(self.get_team(), self.get_team())
     
     def __hash__(self):
         return hash(self.get_mention()) 
