@@ -21,7 +21,7 @@ class Player:
         if self.get_name() != self.get_mention():
             return f"{self.get_name()}{self.get_mention()} ({self.get_team_name()})"
         else:
-            return f"{self.get_mention()} Team:{self.get_team_name()}"
+            return f"{self.get_mention()} ({self.get_team_name()})"
 
     def is_dummy(self) -> bool:
         return self.get_mention().startswith(Player.DUMMY_PREFIX)
