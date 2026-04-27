@@ -70,9 +70,14 @@ class Event:
             return self.matches
         return [m for m in self.matches if m.get_player().get_mention() == player_tag or m.get_opponent().get_mention() == player_tag]
 
-    def print_matches(self):
-        return '\n'.join(str(m) for m in self.matches)
-    
+    def print_matches(self, played:bool=None):
+        if played is None:
+            return '\n'.join(str(m) for m in self.matches)
+        if played:
+            return '\n'.join(str(m) for m in self.matches if m.get_wins() == 2 or m.get_losses() == 2)
+        else:
+            return '\n'.join(str(m) for m in self.matches if not (m.get_wins() == 2 or m.get_losses() == 2))
+
     def print_players(self, team=None):
         players = self.get_players(team=team)
         prefix = 'Players: '
@@ -81,6 +86,14 @@ class Event:
                 prefix = 'WINNERS: ' if self.get_victory() == team else 'losers:'
         return prefix + ', '.join(p.get_mention() for p in players)
     
+    def get_count_matches(self, played:bool=None):
+        if played is None:
+            return len(self.matches)
+        if played:
+            return len([m for m in self.matches if m.get_wins() == 2 or m.get_losses() == 2])
+        else:
+            return len([m for m in self.matches if not (m.get_wins() == 2 or m.get_losses() == 2)])
+
     def get_wins(self, team):
         count = 0
         for m in self.matches:
