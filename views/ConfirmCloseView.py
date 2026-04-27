@@ -21,15 +21,16 @@ class ConfirmCloseView(BaseTempView):
 
         event: Event = db_event.close_event(interaction.guild.id, interaction.channel.id, interaction.user.mention)
         await self.parent_view.update_message(interaction, event=event)
-
-        asyncio.create_task(self.send_log(interaction, event))
+        category_name = getattr(interaction.channel.category, "name", "Event") if interaction.channel.category else "No_Season"
+        asyncio.create_task(self.send_log(interaction, event, category_name))
 
         await self.send_message(interaction, content="Event closed!", view=None)
+        await self.announce_winner(interaction, event, category_name)
 
         State.remove_event(interaction.channel.id)
         functions.channelnameclose(interaction.channel)
 
-    async def send_log(self, interaction: discord.Interaction, event: Event):
+    async def send_log(self, interaction: discord.Interaction, event: Event, category_name: str = "no_season"):
         try:
             log_channel = None
             for channel in interaction.guild.channels:
@@ -38,14 +39,39 @@ class ConfirmCloseView(BaseTempView):
                     break
                 
             if log_channel:
-                category_name = getattr(interaction.channel.category, "name", "Event") if interaction.channel.category else "Event"
-                csv_file = db_event.generate_event_csv(event, category_name)
+                csv_file = generate_event_csv(event, category_name)
                 if csv_file and os.path.exists(csv_file):
                     with open(csv_file, 'rb') as f:
                         await log_channel.send(file=discord.File(f, csv_file))
                     os.remove(csv_file)
         except Exception as error:
             print(f"Error sending event log: {error}")
+
+    async def announce_winner(self, interaction: discord.Interaction, event: Event, category_name: str = "no_season"):
+        """Announce the winning team and instructions for creating a new event"""
+        try:
+            victory = event.get_victory()
+            
+            # Build the announcement message
+            embed = discord.Embed(title="🏆 Event Closed", color=0x03f8fc)
+            embed.add_field(name=f"Season: {category_name}", value=f"**Event:** {event.get_event_name()} ID: {event.get_id()}", inline=True)
+            if victory == 0:
+                embed.add_field(name="Result", value="**It's a Tie!** 🍕", inline=False)
+            else:
+                winning_players = event.get_players(team=victory)
+                winners_mention = ', '.join(p.get_mention() for p in winning_players)
+                team_emoji = event.get_team_emoji(victory)
+                embed.add_field(name=f"Winning Team {team_emoji}", value=f"**Team 🥇:** {winners_mention}", inline=False)
+            
+            embed.add_field(
+                name="Create Next Event",
+                value=f"To create a new event: Right click-> Apps-> Samambot-> New event\nOr use </event:{State.get_command_id('event')}>.",
+                inline=False
+            )
+            
+            await interaction.channel.send(embed=embed)
+        except Exception as error:
+            print(f"Error announcing winner: {error}")
 
 def generate_event_csv(event: Event, category_name: str = "no_season") -> str:
     try:

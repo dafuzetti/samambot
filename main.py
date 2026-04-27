@@ -1,4 +1,5 @@
 import discord
+from discord.app_commands import command
 from discord.ext import commands
 from decouple import config
 import asyncio
@@ -226,17 +227,20 @@ async def on_ready():
 
         await event_message(interaction=None, view=view)
         bot.add_view(view)
-    
+
+    commands = await tree.fetch_commands()
+    for command in commands:
+        State.set_command(command)
+
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
 
-# histoy not working outside of seasons - it should
-
 # visualizar jogos encerrados no eventg de maneira mais facil
+# histoy not working outside of seasons - it should
+# season channel to keep score updated e comandos gerais da season (fechar, mudar tipo, encontrar eventos...)
 # comandos de estatistica 
 # remover dummyes estatisticas de eventos
-# public message when event gets closed? when last player reports result to ask for confirmation
 # move here / liberar para eventos encerrados? bloquear por usuario?
 # report event quendo nao presente
 
