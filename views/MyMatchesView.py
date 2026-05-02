@@ -9,13 +9,13 @@ class MyMatchesView(BaseTempView):
         self.rows = rows
         self.interaction = interaction
 
-    def build_embed(self):
+    def build_embed(self, display_name=None):
         grouped = self.group_matches()
         total_matches = 0
         user = self.interaction.user
         try:
             if len(self.rows) > 0:
-                embed = discord.Embed(title=f"{user.display_name} Open Games:")
+                embed = discord.Embed(title=f"{display_name if display_name else user.display_name} Open Games:")
 
                 for opponent, seasons in grouped.items():
                     value = ""
