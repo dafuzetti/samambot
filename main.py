@@ -50,9 +50,9 @@ async def result(interaction: discord.Interaction, winner: discord.User, loser: 
 @ tree.command(name='games', description='Return missing matches from all events.')
 async def clean(interaction: discord.Interaction, user: discord.Member = None):
     await interaction.response.defer(ephemeral=True)
-    view = MyMatchesView(interaction, db_reports.open_matches(interaction.guild.id, interaction.channel.id, 
-                                                 user.mention if user else interaction.user.mention))
-    embed_built = await view.build_embed()
+    view = MyMatchesView(interaction, db_reports.read_report(interaction.guild.id, interaction.channel.id, interaction.user.mention, 
+                                                 db_reports.OPEN_MATCHES, report_user=user.mention if user else interaction.user.mention))
+    embed_built = view.build_embed(user.display_name if user else interaction.user.display_name)
     await interaction.followup.send(embed=embed_built, ephemeral=True)
 
 @tree.command(name="add_player", description="Add player to an event.")
@@ -235,6 +235,7 @@ async def on_ready():
 
 bot.run(TOKEN)
 
+# add up to 4 dummies not working when 2 players are in the same team (up to 4 should be possible)
 # histoy not working outside of seasons - it should
 # season channel to keep score updated e comandos gerais da season (fechar, mudar tipo, encontrar eventos...)
 # comandos de estatistica 
