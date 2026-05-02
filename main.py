@@ -47,8 +47,8 @@ async def result(interaction: discord.Interaction, winner: discord.User, loser: 
     await interaction.response.defer(ephemeral=True) 
     await interaction.followup.send(await save_result(interaction, winner, loser, gameloss), ephemeral=True)
 
-@ tree.command(name='games', description='Return missing matches from all events.')
-async def clean(interaction: discord.Interaction, user: discord.Member = None):
+@ tree.command(name='open_games', description='Return missing matches from all events.')
+async def open_games(interaction: discord.Interaction, user: discord.Member = None):
     await interaction.response.defer(ephemeral=True)
     view = MyMatchesView(interaction, db_reports.read_report(interaction.guild.id, interaction.channel.id, interaction.user.mention, 
                                                  db_reports.OPEN_MATCHES, report_user=user.mention if user else interaction.user.mention))
