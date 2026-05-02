@@ -70,7 +70,8 @@ class RunningEventView(BasePermView):
     @discord.ui.button(label="My open games", style=discord.ButtonStyle.gray, custom_id="my_games")
     async def my_games(self, interaction: discord.Interaction, button: discord.ui.Button):
         msg = await self.send_message(interaction, "Fetching your open games...")
-        my_open_matches = db_reports.open_matches(interaction.guild.id, interaction.channel.id, interaction.user.mention)
+        my_open_matches = db_reports.read_report(interaction.guild.id, interaction.channel.id, interaction.user.mention, 
+                                                 db_reports.OPEN_MATCHES, report_user=interaction.user.mention)
         await self.send_message(interaction, view=MyMatchesView(interaction, my_open_matches), original_response=msg)
 
     @discord.ui.button(label="Report result", style=discord.ButtonStyle.green, custom_id="report_result")
