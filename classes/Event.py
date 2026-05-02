@@ -101,6 +101,29 @@ class Event:
     def get_player_losses(self, player_tag):
         return sum(1 for m in self.get_matches(player_tag=player_tag) if (m.get_player().get_mention() == player_tag and m.get_losses() == 2) or (m.get_opponent().get_mention() == player_tag and m.get_wins() == 2))
 
+    def get_mvp_players(self) -> list[Player]:
+        leaders = []
+        for p in self.get_players():
+            if not leaders:
+                leaders = [p]
+            else:
+                p_wins = self.get_player_points(p.get_mention())
+                leader_wins = self.get_player_points(leaders[0].get_mention())
+                if p_wins > leader_wins:
+                    leaders = [p]
+                elif p_wins == leader_wins:
+                    leaders.append(p)
+        return leaders
+
+    def get_player_points(self, player_tag):
+        points = 0
+        for m in self.get_matches(player_tag=player_tag):
+            if m.get_player().get_mention() == player_tag:
+                points += 100 if m.get_wins() == 2 else m.get_wins()
+            else:
+                points += 100 if m.get_losses() == 2 else m.get_losses()
+        return points
+
     def get_count_matches(self, played:bool=None):
         if played is None:
             return len(self.matches)

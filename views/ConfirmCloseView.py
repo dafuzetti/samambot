@@ -62,7 +62,15 @@ class ConfirmCloseView(BaseTempView):
                 winners_mention = ', '.join(p.get_mention() for p in winning_players)
                 team_emoji = event.get_team_emoji(victory)
                 embed.add_field(name=f"Winning Team {team_emoji}", value=f"**Team 🥇:** {winners_mention}", inline=False)
-            
+
+            mvp_players = event.get_mvp_players()
+            if mvp_players:
+                embed.add_field(
+                    name="MVP",
+                    value=', '.join(event.get_player_stats(p.get_mention()) for p in mvp_players),
+                    inline=False
+                )
+
             embed.add_field(
                 name="Create Next Event",
                 value=f"To create a new event: Right click-> Apps-> Samambot-> New event\nOr use </event:{State.get_command_id('event')}>.",
